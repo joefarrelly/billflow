@@ -6,7 +6,9 @@ from flask_login import LoginManager, login_user, logout_user, current_user
 from models import db, User, Subscription
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:////app/billflow.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL", "sqlite:////app/billflow.db"
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
@@ -29,7 +31,9 @@ google = oauth.register(
 
 with app.app_context():
     db.create_all()
-    os.makedirs(os.path.join(os.path.dirname(__file__), "static", "icons"), exist_ok=True)
+    os.makedirs(
+        os.path.join(os.path.dirname(__file__), "static", "icons"), exist_ok=True
+    )
 
 
 @login_manager.user_loader
@@ -45,23 +49,30 @@ def index():
 @app.route("/auth/google")
 def auth_google():
     from flask import session
-    redirect_uri = os.environ.get("OAUTH_REDIRECT_URI") or url_for("auth_callback", _external=True)
+
+    redirect_uri = os.environ.get("OAUTH_REDIRECT_URI") or url_for(
+        "auth_callback", _external=True
+    )
     resp = google.authorize_redirect(redirect_uri)
     for key, value in session.items():
-        if key.startswith('_state_google_'):
-            state_token = key[len('_state_google_'):]
-            _oauth_states[state_token] = {'data': {key: value}, 'exp': time.time() + 300}
+        if key.startswith("_state_google_"):
+            state_token = key[len("_state_google_") :]
+            _oauth_states[state_token] = {
+                "data": {key: value},
+                "exp": time.time() + 300,
+            }
     return resp
 
 
 @app.route("/auth/callback")
 def auth_callback():
     from flask import session
-    state = request.args.get('state', '')
+
+    state = request.args.get("state", "")
     entry = _oauth_states.pop(state, None)
-    if not entry or time.time() > entry['exp']:
+    if not entry or time.time() > entry["exp"]:
         return jsonify({"error": "OAuth state invalid or expired"}), 400
-    session.update(entry['data'])
+    session.update(entry["data"])
     token = google.authorize_access_token()
     email = token["userinfo"]["email"]
     user = User.query.filter_by(email=email).first()
@@ -90,7 +101,11 @@ def api_me():
 def list_subs():
     if not current_user.is_authenticated:
         return jsonify({"error": "not authenticated"}), 401
-    subs = Subscription.query.filter_by(user_id=current_user.id).order_by(Subscription.day).all()
+    subs = (
+        Subscription.query.filter_by(user_id=current_user.id)
+        .order_by(Subscription.day)
+        .all()
+    )
     return jsonify([s.to_dict() for s in subs])
 
 
@@ -119,7 +134,9 @@ def create_sub():
 def update_sub(sub_id):
     if not current_user.is_authenticated:
         return jsonify({"error": "not authenticated"}), 401
-    sub = Subscription.query.filter_by(id=sub_id, user_id=current_user.id).first_or_404()
+    sub = Subscription.query.filter_by(
+        id=sub_id, user_id=current_user.id
+    ).first_or_404()
     data = request.get_json(force=True)
     sub.name = data.get("name", sub.name)
     sub.amount = float(data.get("amount", sub.amount))
@@ -138,7 +155,9 @@ def update_sub(sub_id):
 def delete_sub(sub_id):
     if not current_user.is_authenticated:
         return jsonify({"error": "not authenticated"}), 401
-    sub = Subscription.query.filter_by(id=sub_id, user_id=current_user.id).first_or_404()
+    sub = Subscription.query.filter_by(
+        id=sub_id, user_id=current_user.id
+    ).first_or_404()
     db.session.delete(sub)
     db.session.commit()
     return "", 204
@@ -150,22 +169,32 @@ def migrate():
         return jsonify({"error": "not authenticated"}), 401
     existing = Subscription.query.filter_by(user_id=current_user.id).count()
     if existing > 0:
-        subs = Subscription.query.filter_by(user_id=current_user.id).order_by(Subscription.day).all()
+        subs = (
+            Subscription.query.filter_by(user_id=current_user.id)
+            .order_by(Subscription.day)
+            .all()
+        )
         return jsonify([s.to_dict() for s in subs])
-    for data in (request.get_json(force=True) or []):
-        db.session.add(Subscription(
-            user_id=current_user.id,
-            name=data["name"],
-            amount=float(data["amount"]),
-            frequency=data["freq"],
-            day=int(data.get("day", 1)),
-            start_month=int(data.get("startMonth", 0)),
-            category=data.get("category", "other"),
-            color=data.get("color", "#888"),
-            icon=data.get("icon"),
-        ))
+    for data in request.get_json(force=True) or []:
+        db.session.add(
+            Subscription(
+                user_id=current_user.id,
+                name=data["name"],
+                amount=float(data["amount"]),
+                frequency=data["freq"],
+                day=int(data.get("day", 1)),
+                start_month=int(data.get("startMonth", 0)),
+                category=data.get("category", "other"),
+                color=data.get("color", "#888"),
+                icon=data.get("icon"),
+            )
+        )
     db.session.commit()
-    subs = Subscription.query.filter_by(user_id=current_user.id).order_by(Subscription.day).all()
+    subs = (
+        Subscription.query.filter_by(user_id=current_user.id)
+        .order_by(Subscription.day)
+        .all()
+    )
     return jsonify([s.to_dict() for s in subs])
 
 
