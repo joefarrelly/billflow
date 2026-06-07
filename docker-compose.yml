@@ -2,11 +2,13 @@
 services:
   web:
     build: .
-    command: flask run --host=0.0.0.0 --debug
+    command: flask run --host=0.0.0.0 --port=5003 --debug
     volumes:
       - .:/app
     ports:
-      - "5003:5000"
+      - "5003:5003"
     env_file: .env
     environment:
       - FLASK_APP=app.py
+      - AUTHLIB_INSECURE_TRANSPORT=1
+      - OAUTH_REDIRECT_URI=http://localhost:5003/auth/callback

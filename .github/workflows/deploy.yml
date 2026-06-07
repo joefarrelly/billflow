@@ -24,4 +24,4 @@ jobs:
           USER: ${{ secrets.SERVER_USER }}
         run: |
           ssh "$USER@$HOST" \
-            'cd ~/apps/billsflow && git pull && cd ~/apps && docker compose up -d --build billsflow-web'
+            'cd ~/apps/billflow && git pull && cd ~/apps && docker compose up -d --build billflow-web'
