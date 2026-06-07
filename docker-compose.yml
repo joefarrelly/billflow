@@ -1,0 +1,12 @@
+# Local dev only. Production service lives in ~/apps/docker-compose.yml on the server.
+services:
+  web:
+    build: .
+    command: flask run --host=0.0.0.0 --debug
+    volumes:
+      - .:/app
+    ports:
+      - "5003:5000"
+    env_file: .env
+    environment:
+      - FLASK_APP=app.py
