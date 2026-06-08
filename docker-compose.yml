@@ -1,4 +1,5 @@
 # Local dev only. Production service lives in ~/apps/docker-compose.yml on the server.
+name: billflow
 services:
   web:
     build: .
