@@ -725,7 +725,7 @@ body {
   .topbar-title { font-size: 1.1rem; }
 
   .mobile-header {
-    background: var(--ink);
+    background: var(--sidebar-bg, var(--ink));
     color: #fff;
     padding: 14px 16px;
     display: flex; align-items: center; justify-content: space-between;
@@ -741,7 +741,7 @@ body {
 
   /* mobile summary bar */
   .mobile-sum {
-    background: var(--ink);
+    background: var(--sidebar-bg, var(--ink));
     padding: 0 16px 14px;
     display: grid; grid-template-columns: 1fr 1fr;
     gap: 8px;
