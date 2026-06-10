@@ -163,6 +163,29 @@ def delete_sub(sub_id):
     return "", 204
 
 
+@app.route("/api/settings", methods=["GET"])
+def get_settings():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not authenticated"}), 401
+    return jsonify(current_user.get_settings())
+
+
+@app.route("/api/settings", methods=["PUT"])
+def save_settings():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not authenticated"}), 401
+    data = request.get_json(force=True)
+    current_user.set_settings(
+        {
+            "theme": data.get("theme"),
+            "currency": data.get("currency"),
+            "categories": data.get("categories"),
+        }
+    )
+    db.session.commit()
+    return jsonify(current_user.get_settings())
+
+
 @app.route("/api/migrate", methods=["POST"])
 def migrate():
     if not current_user.is_authenticated:

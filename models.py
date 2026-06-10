@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
@@ -9,9 +10,16 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(200), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    settings = db.Column(db.Text, nullable=True)
     subscriptions = db.relationship(
         "Subscription", backref="user", lazy=True, cascade="all, delete-orphan"
     )
+
+    def get_settings(self):
+        return json.loads(self.settings) if self.settings else None
+
+    def set_settings(self, data):
+        self.settings = json.dumps(data)
 
 
 class Subscription(db.Model):
