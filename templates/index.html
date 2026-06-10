@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Billflow</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231a1714'/><text x='16' y='23' font-family='serif' font-size='20' font-weight='700' text-anchor='middle' fill='%23e8d5b0'>B</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <style>
 /* ── RESET & TOKENS ───────────────────────────────────────── */
@@ -241,11 +242,12 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* ── VIEWS WRAPPER ────────────────────────────────────────── */
-.view { display: none; flex: 1; }
-.view.active { display: flex; flex-direction: column; flex: 1; }
+.view { display: none; flex: 1; min-height: 0; }
+.view.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
 /* ══════════════════════════════════════════════════════════
    CALENDAR + LIST  (side-by-side on desktop)
