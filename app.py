@@ -180,6 +180,7 @@ def save_settings():
         {
             "theme": data.get("theme"),
             "currency": data.get("currency"),
+            "calDisplay": data.get("calDisplay"),
             "categories": data.get("categories"),
         }
     )
