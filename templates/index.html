@@ -136,7 +136,8 @@ body {
   display: grid;
   grid-template-columns: 200px 1fr;
   grid-template-rows: auto 1fr;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* ── SIDEBAR ──────────────────────────────────────────────── */
@@ -237,9 +238,9 @@ body {
 
 /* ── MAIN CONTENT ─────────────────────────────────────────── */
 .main {
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 /* ── VIEWS WRAPPER ────────────────────────────────────────── */
