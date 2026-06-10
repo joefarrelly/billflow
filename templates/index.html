@@ -345,6 +345,12 @@ body {
   cursor: default;
 }
 /* pill category colours injected dynamically via injectCatStyles() */
+.cal-icons-row { display: flex; flex-wrap: wrap; gap: 2px; }
+.cal-icon-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 4px;
+  overflow: hidden; cursor: default; font-weight: 600; flex-shrink: 0;
+}
 
 /* ── LIST PANEL ───────────────────────────────────────────── */
 .list-panel {
@@ -1102,6 +1108,11 @@ body {
     </div>
 
     <div class="settings-section">
+      <div class="settings-section-title">Calendar labels</div>
+      <div class="settings-row" id="settings-cal-display-grid"></div>
+    </div>
+
+    <div class="settings-section">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div class="settings-section-title" style="margin-bottom:0">Categories</div>
       </div>
@@ -1138,6 +1149,10 @@ body {
           <button type="button" class="icon-clear-btn" id="icon-clear-btn"
                   onclick="clearIcon()" title="Remove logo">×</button>
         </div>
+        <input type="text" class="fi" id="f-icon-search"
+               placeholder="Search logo… (e.g. Suzuki)"
+               oninput="onIconSearchInput()"
+               style="flex:1;font-size:.8rem;">
       </div>
     </div>
 
@@ -1257,6 +1272,8 @@ let selColor = COLORS[0];
 let pendingIconUrl = null;
 let clearbitTimer = null;
 let logoRejected = false;
+let iconLocked = false;
+let iconSearchTimer = null;
 let isLoggedIn = false;
 let userEmail = '';
 
@@ -1324,6 +1341,7 @@ async function initAuth() {
         if (saved) {
           if (saved.theme) setTheme(saved.theme);
           if (saved.currency) setCurrency(saved.currency);
+          if (saved.calDisplay) setCalDisplay(saved.calDisplay);
           if (saved.categories) { localStorage.setItem(LS_CATS, JSON.stringify(saved.categories)); injectCatStyles(); populateCatSelects(); }
         } else {
           syncSettings();
@@ -1387,15 +1405,16 @@ function monthlyEquiv(sub) {
   return sub.amount;
 }
 
-let currency = localStorage.getItem('bf_currency') || '£';
-let theme    = localStorage.getItem('bf_theme')    || 'sand';
+let currency   = localStorage.getItem('bf_currency')    || '£';
+let theme      = localStorage.getItem('bf_theme')       || 'sand';
+let calDisplay = localStorage.getItem('bf_cal_display') || 'text';
 
 function syncSettings() {
   if (!isLoggedIn) return;
   fetch('/api/settings', {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ theme, currency, categories: loadCats() }),
+    body: JSON.stringify({ theme, currency, calDisplay, categories: loadCats() }),
   });
 }
 
@@ -1423,6 +1442,14 @@ function setCurrency(sym) {
   renderCalendar();
   renderList();
   renderYearly();
+  syncSettings();
+}
+function setCalDisplay(d) {
+  calDisplay = d;
+  localStorage.setItem('bf_cal_display', d);
+  const grid = document.getElementById('settings-cal-display-grid');
+  if (grid) renderSettingsCalDisplay();
+  renderCalendar();
   syncSettings();
 }
 function ordinal(n) {
@@ -1480,8 +1507,11 @@ function updateModalIconPreview() {
 
 function clearIcon() {
   pendingIconUrl = null;
+  iconLocked = false;
   logoRejected = true;
   clearTimeout(clearbitTimer);
+  clearTimeout(iconSearchTimer);
+  document.getElementById('f-icon-search').value = '';
   updateModalIconPreview();
 }
 
@@ -1509,9 +1539,28 @@ function tryLoadClearbit(name) {
   img.src = url;
 }
 
+function onIconSearchInput() {
+  const term = document.getElementById('f-icon-search').value.trim();
+  clearTimeout(iconSearchTimer);
+  if (!term) return;
+  iconSearchTimer = setTimeout(() => {
+    const domain = term.replace(/\s+/g, '').toLowerCase() + '.com';
+    const url = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth <= 16 && img.naturalHeight <= 16) { updateModalIconPreview(); return; }
+      pendingIconUrl = url;
+      iconLocked = true;
+      updateModalIconPreview();
+    };
+    img.onerror = () => updateModalIconPreview();
+    img.src = url;
+  }, 400);
+}
+
 function onNameInput() {
   clearTimeout(clearbitTimer);
-  if (pendingIconUrl && pendingIconUrl.includes('google.com/s2/favicons')) {
+  if (!iconLocked && pendingIconUrl && pendingIconUrl.includes('google.com/s2/favicons')) {
     pendingIconUrl = null;
   }
   updateModalIconPreview();
@@ -1561,11 +1610,19 @@ function renderCalendar() {
     const isToday = cell.cur && isCur && cell.day===today.getDate();
     const pills = cell.cur
       ? subs.filter(s => isDueInMonth(s, calMonth) && s.day===cell.day)
-            .map(s=>`<span class="pill cat-${s.category}" title="${s.name} — ${fmt(s.amount)}">${s.name}</span>`).join('')
+            .map(s => calDisplay === 'icons' ? calIconPill(s) : `<span class="pill cat-${s.category}" title="${s.name} — ${fmt(s.amount)}">${s.name}</span>`).join('')
       : '';
     return `<div class="cal-cell${!cell.cur?' dim':''}${isToday?' today':''}">
-      <div class="dnum">${cell.day}</div>${pills}</div>`;
+      <div class="dnum">${cell.day}</div>${calDisplay === 'icons' ? `<div class="cal-icons-row">${pills}</div>` : pills}</div>`;
   }).join('');
+}
+
+function calIconPill(s) {
+  const ini = initials(s.name);
+  const inner = s.icon
+    ? `<img src="${s.icon}" alt="${s.name}" style="width:100%;height:100%;object-fit:contain;padding:2px;background:#fff;" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\\'font-size:.5rem\\'>${ini}</span>'">`
+    : `<span style="font-size:.5rem">${ini}</span>`;
+  return `<span class="cal-icon-pill" title="${s.name} — ${fmt(s.amount)}" style="background:${s.color}26;color:${s.color}">${inner}</span>`;
 }
 
 function changeMonth(d) {
@@ -1693,6 +1750,7 @@ const CURRENCIES = ['£','$','€','¥','₹','A$','C$','Fr'];
 function openSettings() {
   renderSettingsTheme();
   renderSettingsCurrency();
+  renderSettingsCalDisplay();
   renderSettingsCats();
   document.getElementById('settings-backdrop').classList.add('open');
 }
@@ -1716,6 +1774,13 @@ function renderSettingsTheme() {
 function renderSettingsCurrency() {
   document.getElementById('settings-currency-grid').innerHTML = CURRENCIES.map(c =>
     `<button class="curr-opt${currency === c ? ' active' : ''}" onclick="setCurrency('${c}')">${c}</button>`
+  ).join('');
+}
+
+function renderSettingsCalDisplay() {
+  const opts = [{ id: 'text', label: 'Text' }, { id: 'icons', label: 'Icons' }];
+  document.getElementById('settings-cal-display-grid').innerHTML = opts.map(o =>
+    `<button class="curr-opt${calDisplay === o.id ? ' active' : ''}" onclick="setCalDisplay('${o.id}')">${o.label}</button>`
   ).join('');
 }
 
@@ -1820,6 +1885,7 @@ function openModal(id) {
   editId = id || null;
   pendingIconUrl = null;
   logoRejected = false;
+  iconLocked = false;
 
   const s = id ? subs.find(x=>x.id===id) : null;
   document.getElementById('modal-title').textContent = id ? 'Edit Subscription' : 'Add Subscription';
@@ -1839,9 +1905,11 @@ function openModal(id) {
 
   if (s?.icon) {
     pendingIconUrl = s.icon;
+    iconLocked = true;
   } else if (s?.name) {
     tryLoadClearbit(s.name);
   }
+  document.getElementById('f-icon-search').value = '';
   updateModalIconPreview();
 
   document.getElementById('backdrop').classList.add('open');
@@ -1852,7 +1920,9 @@ function closeModal() {
   document.getElementById('backdrop').classList.remove('open');
   pendingIconUrl = null;
   logoRejected = false;
+  iconLocked = false;
   clearTimeout(clearbitTimer);
+  clearTimeout(iconSearchTimer);
 }
 
 function closeBackdrop(e) {
@@ -1884,8 +1954,7 @@ async function saveSubscription() {
     return;
   }
 
-  const payload = { name, amount, day, freq, startMonth, category: cat, color: selColor };
-  if (pendingIconUrl) payload.icon = pendingIconUrl;
+  const payload = { name, amount, day, freq, startMonth, category: cat, color: selColor, icon: pendingIconUrl || null };
 
   if (editId) {
     await storage.update(editId, payload);
