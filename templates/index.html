@@ -1214,7 +1214,7 @@ function loadCats() {
   const stored = localStorage.getItem(LS_CATS);
   return stored ? JSON.parse(stored) : DEFAULT_CATS;
 }
-function saveCats(cats) { localStorage.setItem(LS_CATS, JSON.stringify(cats)); }
+function saveCats(cats) { localStorage.setItem(LS_CATS, JSON.stringify(cats)); syncSettings(); }
 
 function injectCatStyles() {
   const cats = loadCats();
@@ -1317,6 +1317,19 @@ async function initAuth() {
     if (r.ok) {
       isLoggedIn = true;
       userEmail = (await r.json()).email;
+
+      const sr = await fetch('/api/settings');
+      if (sr.ok) {
+        const saved = await sr.json();
+        if (saved) {
+          if (saved.theme) setTheme(saved.theme);
+          if (saved.currency) setCurrency(saved.currency);
+          if (saved.categories) { localStorage.setItem(LS_CATS, JSON.stringify(saved.categories)); injectCatStyles(); populateCatSelects(); }
+        } else {
+          syncSettings();
+        }
+      }
+
       const local = lsGet();
       if (local.length > 0) {
         const mr = await fetch('/api/migrate', {
@@ -1377,12 +1390,22 @@ function monthlyEquiv(sub) {
 let currency = localStorage.getItem('bf_currency') || '£';
 let theme    = localStorage.getItem('bf_theme')    || 'sand';
 
+function syncSettings() {
+  if (!isLoggedIn) return;
+  fetch('/api/settings', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ theme, currency, categories: loadCats() }),
+  });
+}
+
 function setTheme(t) {
   theme = t;
   localStorage.setItem('bf_theme', t);
   document.documentElement.setAttribute('data-theme', t === 'sand' ? '' : t);
   const grid = document.getElementById('settings-theme-grid');
   if (grid) renderSettingsTheme();
+  syncSettings();
 }
 
 function fmt(n) { return currency + parseFloat(n).toFixed(2); }
@@ -1400,6 +1423,7 @@ function setCurrency(sym) {
   renderCalendar();
   renderList();
   renderYearly();
+  syncSettings();
 }
 function ordinal(n) {
   const s=['th','st','nd','rd'], v=n%100;
