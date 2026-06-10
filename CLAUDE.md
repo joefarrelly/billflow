@@ -106,6 +106,7 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 - Modal auto-fetches logo via Google favicon API with 400ms debounce — falls back to colour initials. × button dismisses the auto-fetched logo for the session.
 - All native `<select>` elements are replaced by a custom JS dropdown (`CustomSelect` class) for consistent cross-browser styling. Sidebar selects get a dark variant automatically.
 - Storage abstraction (`storage.load/create/update/remove`) switches between localStorage and API based on `isLoggedIn`.
+- Settings modal (gear icon in sidebar / mobile header) controls theme, currency, and categories.
 
 ## User preferences (localStorage)
 
@@ -113,8 +114,15 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 |-----|---------|--------|
 | `bf_currency` | `£` | `£` `$` `€` `¥` `₹` `A$` `C$` `Fr` |
 | `bf_theme` | `sand` | `sand` `slate` `midnight` `forest` `rose` |
+| `bf_categories` | see below | JSON array of `{id, label, color}` objects |
 | `bf_subs` | `[]` | JSON array of subscriptions (anonymous mode only) |
 | `bf_next_id` | `-1` | Decrementing integer for local IDs (anonymous mode only) |
+
+## Categories
+
+Categories are user-configurable, stored in `bf_categories`. Default set: Entertainment (`#2D5C9E`), Utilities (`#B07E18`), Other (`#8C8278`). Each category has an `id` (CSS-safe slug), `label`, and `color` (hex). Pill CSS (`.pill.cat-{id}`) is injected dynamically by `injectCatStyles()` — background is the color at 15% opacity (`color + '26'`), text is the color. Category selects in the subscription modal and list filter are populated by `populateCatSelects()`. Both are called on init and whenever categories are modified.
+
+Custom category IDs are generated as `c{timestamp}` to ensure CSS safety.
 
 ## Themes
 
