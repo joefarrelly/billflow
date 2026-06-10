@@ -3,6 +3,7 @@ import time
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from authlib.integrations.flask_client import OAuth
 from flask_login import LoginManager, login_user, logout_user, current_user
+from flask_migrate import Migrate
 from models import db, User, Subscription
 
 app = Flask(__name__)
@@ -17,6 +18,7 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 _oauth_states: dict[str, dict] = {}
 
 db.init_app(app)
+Migrate(app, db)
 
 login_manager = LoginManager(app)
 
@@ -30,7 +32,6 @@ google = oauth.register(
 )
 
 with app.app_context():
-    db.create_all()
     os.makedirs(
         os.path.join(os.path.dirname(__file__), "static", "icons"), exist_ok=True
     )
