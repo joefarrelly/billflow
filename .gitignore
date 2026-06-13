@@ -1,5 +1,8 @@
-.env
-*.db
-static/icons/
 __pycache__/
-*.pyc
+*.py[cod]
+.env
+.env.*
+*.egg-info/
+dist/
+build/
+.DS_Store
