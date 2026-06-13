@@ -3,3 +3,4 @@
 static/icons/
 __pycache__/
 *.pyc
+.claude/settings.local.json
