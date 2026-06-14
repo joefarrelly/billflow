@@ -51,8 +51,11 @@ def index():
 def auth_google():
     from flask import session
 
-    redirect_uri = os.environ.get("OAUTH_REDIRECT_URI") or url_for(
-        "auth_callback", _external=True
+    base_url = os.environ.get("BASE_URL", "").rstrip("/")
+    redirect_uri = (
+        f"{base_url}/auth/callback"
+        if base_url
+        else url_for("auth_callback", _external=True)
     )
     resp = google.authorize_redirect(redirect_uri)
     for key, value in session.items():

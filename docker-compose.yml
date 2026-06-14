@@ -3,7 +3,7 @@ name: billflow
 services:
   web:
     build: .
-    command: flask run --host=0.0.0.0 --port=5003 --debug
+    command: sh -c "flask db upgrade && flask run --host=0.0.0.0 --port=5003 --debug"
     volumes:
       - .:/app
     ports:
@@ -12,4 +12,3 @@ services:
     environment:
       - FLASK_APP=app.py
       - AUTHLIB_INSECURE_TRANSPORT=1
-      - OAUTH_REDIRECT_URI=http://localhost:5003/auth/callback
