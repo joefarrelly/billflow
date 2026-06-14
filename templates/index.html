@@ -691,6 +691,8 @@ body {
 .btn-ghost:hover { color: var(--ink); }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover { filter: brightness(.85); }
+.btn-danger { background: #b91c1c; color: #fff; }
+.btn-danger:hover { filter: brightness(.85); }
 
 /* ── SETTINGS MODAL ─────────────────────────────────────── */
 .settings-modal { width: 440px; max-height: 90vh; overflow-y: auto; }
@@ -1204,8 +1206,21 @@ body {
     </div>
 
     <div class="modal-footer">
+      <span id="modal-error" style="font-size:.78rem;color:var(--accent);flex:1;display:none"></span>
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSubscription()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="confirm-backdrop" onclick="closeConfirmBackdrop(event)">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-title" style="font-size:1.05rem" id="confirm-title">Remove subscription?</div>
+    <p id="confirm-body" style="font-size:.875rem;color:var(--ink-muted);margin-top:8px"></p>
+    <div class="modal-footer" style="margin-top:20px">
+      <span id="confirm-error" style="font-size:.78rem;color:var(--accent);flex:1;display:none"></span>
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok" onclick="executeConfirm()">Remove</button>
     </div>
   </div>
 </div>
@@ -1277,8 +1292,7 @@ let clearbitTimer = null;
 let logoRejected = false;
 let iconLocked = false;
 let iconSearchTimer = null;
-let isLoggedIn = false;
-let userEmail = '';
+const userEmail = {{ email | tojson }};
 
 const today = new Date();
 let calYear  = today.getFullYear();
@@ -1288,98 +1302,41 @@ let mobileTab = 'cal';
 let currentView = 'calendar';
 
 /* ── STORAGE ────────────────────────────────────────────── */
-const LS_SUBS = 'bf_subs';
-const LS_NEXT_ID = 'bf_next_id';
-
-function lsGet() { return JSON.parse(localStorage.getItem(LS_SUBS) || '[]'); }
-function lsSave(s) { localStorage.setItem(LS_SUBS, JSON.stringify(s)); }
-function lsNextId() {
-  const n = parseInt(localStorage.getItem(LS_NEXT_ID) || '-1');
-  localStorage.setItem(LS_NEXT_ID, String(n - 1));
-  return n;
+async function apiCall(url, opts) {
+  const r = await fetch(url, opts);
+  if (r.status === 403) throw new Error('This is a read-only demo account.');
+  return r;
 }
 
 const storage = {
-  async load() {
-    if (isLoggedIn) return (await fetch('/api/subscriptions')).json();
-    return lsGet();
-  },
-  async create(data) {
-    if (isLoggedIn) {
-      return (await fetch('/api/subscriptions', {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data),
-      })).json();
-    }
-    const sub = { ...data, id: lsNextId() };
-    const all = lsGet(); all.push(sub); lsSave(all);
-    return sub;
-  },
-  async update(id, data) {
-    if (isLoggedIn) {
-      return (await fetch(`/api/subscriptions/${id}`, {
-        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data),
-      })).json();
-    }
-    const all = lsGet();
-    const i = all.findIndex(s => s.id === id);
-    if (i !== -1) { all[i] = { ...all[i], ...data }; lsSave(all); return all[i]; }
-    return data;
-  },
-  async remove(id) {
-    if (isLoggedIn) { await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' }); return; }
-    lsSave(lsGet().filter(s => s.id !== id));
-  },
+  load:   async ()         => (await apiCall('/api/subscriptions')).json(),
+  create: async (data)     => (await apiCall('/api/subscriptions', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})).json(),
+  update: async (id, data) => (await apiCall(`/api/subscriptions/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})).json(),
+  remove: async (id)       => apiCall(`/api/subscriptions/${id}`, {method:'DELETE'}),
 };
 
 async function initAuth() {
-  try {
-    const r = await fetch('/api/me');
-    if (r.ok) {
-      isLoggedIn = true;
-      userEmail = (await r.json()).email;
-
-      const sr = await fetch('/api/settings');
-      if (sr.ok) {
-        const saved = await sr.json();
-        if (saved) {
-          if (saved.theme) setTheme(saved.theme);
-          if (saved.currency) setCurrency(saved.currency);
-          if (saved.calDisplay) setCalDisplay(saved.calDisplay);
-          if (saved.categories) { localStorage.setItem(LS_CATS, JSON.stringify(saved.categories)); injectCatStyles(); populateCatSelects(); }
-        } else {
-          syncSettings();
-        }
-      }
-
-      const local = lsGet();
-      if (local.length > 0) {
-        const mr = await fetch('/api/migrate', {
-          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(local),
-        });
-        if (mr.ok) { localStorage.removeItem(LS_SUBS); localStorage.removeItem(LS_NEXT_ID); }
-      }
+  const sr = await fetch('/api/settings');
+  if (sr.ok) {
+    const saved = await sr.json();
+    if (saved) {
+      if (saved.theme) setTheme(saved.theme);
+      if (saved.currency) setCurrency(saved.currency);
+      if (saved.calDisplay) setCalDisplay(saved.calDisplay);
+      if (saved.categories) { localStorage.setItem(LS_CATS, JSON.stringify(saved.categories)); injectCatStyles(); populateCatSelects(); }
+    } else {
+      syncSettings();
     }
-  } catch (_) { /* network error, stay anonymous */ }
-  updateAuthUI();
-}
+  }
 
-function updateAuthUI() {
-  const signedInHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+  const authHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
     <span style="font-size:.68rem;color:rgba(255,255,255,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${userEmail}">${userEmail}</span>
     <a href="/logout" style="font-size:.68rem;color:rgba(255,255,255,.4);text-decoration:underline;white-space:nowrap;flex-shrink:0">Sign out</a>
   </div>`;
-  const signInHTML = `<a href="/auth/google" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);font-size:.75rem;text-decoration:none;transition:background .15s"
-    onmouseover="this.style.background='rgba(255,255,255,.14)';this.style.color='#fff'"
-    onmouseout="this.style.background='rgba(255,255,255,.08)';this.style.color='rgba(255,255,255,.7)'">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57C21.36 18.1 22.56 15.3 22.56 12.25z" fill="rgba(255,255,255,.8)"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="rgba(255,255,255,.65)"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="rgba(255,255,255,.55)"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" fill="rgba(255,255,255,.75)"/></svg>
-    Sign in with Google
-  </a>`;
-
   const sidebar = document.getElementById('sidebar-auth');
-  if (sidebar) sidebar.innerHTML = isLoggedIn ? signedInHTML : signInHTML;
-
+  if (sidebar) sidebar.innerHTML = authHTML;
   const mobile = document.getElementById('mobile-auth');
-  if (mobile) mobile.innerHTML = isLoggedIn ? signedInHTML : signInHTML;
+  if (mobile) mobile.innerHTML = authHTML;
 }
 
 async function loadSubs() {
@@ -1413,7 +1370,6 @@ let theme      = localStorage.getItem('bf_theme')       || 'sand';
 let calDisplay = localStorage.getItem('bf_cal_display') || 'text';
 
 function syncSettings() {
-  if (!isLoggedIn) return;
   fetch('/api/settings', {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
@@ -1889,6 +1845,7 @@ function openModal(id) {
   pendingIconUrl = null;
   logoRejected = false;
   iconLocked = false;
+  clearModalError();
 
   const s = id ? subs.find(x=>x.id===id) : null;
   document.getElementById('modal-title').textContent = id ? 'Edit Subscription' : 'Add Subscription';
@@ -1934,13 +1891,53 @@ function closeBackdrop(e) {
 
 function editSub(id) { openModal(id); }
 
-async function delSub(id) {
-  if (!confirm('Remove this subscription?')) return;
-  await storage.remove(id);
+function showModalError(msg) {
+  const el = document.getElementById('modal-error');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function clearModalError() {
+  const el = document.getElementById('modal-error');
+  if (el) { el.textContent = ''; el.style.display = 'none'; }
+}
+
+let _pendingDelId = null;
+
+function delSub(id) {
+  const sub = subs.find(s => s.id === id);
+  _pendingDelId = id;
+  document.getElementById('confirm-body').textContent =
+    sub ? `"${sub.name}" will be permanently removed.` : 'This subscription will be permanently removed.';
+  document.getElementById('confirm-error').style.display = 'none';
+  document.getElementById('confirm-backdrop').classList.add('open');
+}
+
+function closeConfirm() {
+  _pendingDelId = null;
+  document.getElementById('confirm-backdrop').classList.remove('open');
+}
+
+function closeConfirmBackdrop(e) {
+  if (e.target === e.currentTarget) closeConfirm();
+}
+
+async function executeConfirm() {
+  if (_pendingDelId === null) return;
+  try {
+    await storage.remove(_pendingDelId);
+  } catch (e) {
+    const err = document.getElementById('confirm-error');
+    err.textContent = e.message;
+    err.style.display = 'block';
+    return;
+  }
+  closeConfirm();
   await loadSubs();
 }
 
 async function saveSubscription() {
+  clearModalError();
   const name       = document.getElementById('f-name').value.trim();
   const amount     = parseFloat(document.getElementById('f-amount').value);
   const freq       = document.getElementById('f-freq').value;
@@ -1949,21 +1946,23 @@ async function saveSubscription() {
   const cat        = document.getElementById('f-cat').value;
 
   if (!name || isNaN(amount) || amount <= 0) {
-    alert('Please fill in name and a valid amount.');
+    showModalError('Please fill in name and a valid amount.');
     return;
   }
   if (day < 1 || day > 28) {
-    alert('Day must be between 1 and 28.');
+    showModalError('Day must be between 1 and 28.');
     return;
   }
 
   const payload = { name, amount, day, freq, startMonth, category: cat, color: selColor, icon: pendingIconUrl || null };
 
-  if (editId) {
-    await storage.update(editId, payload);
-  } else {
-    await storage.create(payload);
-  }
+  try {
+    if (editId) {
+      await storage.update(editId, payload);
+    } else {
+      await storage.create(payload);
+    }
+  } catch (e) { showModalError(e.message); return; }
 
   closeModal();
   await loadSubs();

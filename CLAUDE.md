@@ -8,7 +8,7 @@ Live at [billflow.fazz.uk](https://billflow.fazz.uk).
 
 - **Python 3.13** + Flask 3.1.1 + Gunicorn
 - **PostgreSQL 17** via Flask-SQLAlchemy 3.1.1 + psycopg2-binary — `billflow` database, `billflow` user (Docker-managed)
-- **Flask-Login 0.6.3** + **Authlib 1.3.2** — optional Google SSO; anonymous mode uses localStorage
+- **Flask-Login 0.6.3** + **Authlib 1.3.2** — Google SSO required; demo user for try-without-signup
 - **Alembic 1.14.1** — database migrations (`alembic upgrade head` runs on container start)
 - **Docker** — no venvs, ever. All Python work runs in Docker.
 - Custom CSS frontend (no framework) — DM Sans / Playfair Display / DM Mono fonts
@@ -20,6 +20,7 @@ app.py              Flask app + REST API + auth routes
 models.py           SQLAlchemy User and Subscription models
 templates/
   index.html        Full standalone template (all CSS/JS inline, no base inheritance)
+  login.html        Standalone login page (Google SSO + demo)
 static/
   icons/            Favicon/logo cache (gitignored)
 requirements.txt
@@ -44,8 +45,8 @@ App runs at http://localhost:5003.
 
 ```
 SECRET_KEY=any-random-string
-GOOGLE_CLIENT_ID=      # from Google Cloud Console (optional — anonymous mode works without it)
-GOOGLE_CLIENT_SECRET=  # from Google Cloud Console (optional)
+GOOGLE_CLIENT_ID=      # from Google Cloud Console (demo mode works without it)
+GOOGLE_CLIENT_SECRET=  # from Google Cloud Console (demo mode works without it)
 ```
 
 `AUTHLIB_INSECURE_TRANSPORT=1` and `OAUTH_REDIRECT_URI=http://localhost:5003/auth/callback` are set automatically in docker-compose for local HTTP development.
@@ -56,12 +57,12 @@ Flask does not emit a `Set-Cookie` header on the 302 redirect response from `/au
 
 ## Auth model
 
-The app works in two modes:
+Login is required. Unauthenticated requests to `/` redirect to `/login`.
 
-- **Anonymous** — no sign-in required. Subscription data lives in `localStorage` (`bf_subs`, `bf_next_id`). Full functionality except server sync.
-- **Signed in** — Google OAuth via `/auth/google`. On first sign-in, any localStorage data is automatically migrated to the server. All reads/writes go to the API.
+- **Google SSO** — via `/auth/google`. Creates a user row on first sign-in. Full read/write access.
+- **Demo** — via `/auth/demo`. Logs in as `demo@billflow.app`, seeded at startup with 5 sample subscriptions. Write routes return `403` for this account.
 
-All API routes return `401 JSON` (not a redirect) when unauthenticated, so the frontend stays in local mode gracefully.
+`/login` redirects to `/` if already authenticated. `/logout` redirects to `/login`.
 
 ## API
 
@@ -71,10 +72,9 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 |--------|------|-------------|
 | GET | `/api/me` | Returns `{email}` if authenticated, 401 otherwise |
 | GET | `/api/subscriptions` | List user's subscriptions |
-| POST | `/api/subscriptions` | Create subscription |
-| PUT | `/api/subscriptions/<id>` | Update subscription |
-| DELETE | `/api/subscriptions/<id>` | Delete subscription |
-| POST | `/api/migrate` | Migrate localStorage subs to server (skips if user already has server data) |
+| POST | `/api/subscriptions` | Create subscription (403 for demo) |
+| PUT | `/api/subscriptions/<id>` | Update subscription (403 for demo) |
+| DELETE | `/api/subscriptions/<id>` | Delete subscription (403 for demo) |
 
 ### Subscription shape (JSON)
 
@@ -108,7 +108,7 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 - Yearly view shows bar chart + monthly breakdown table
 - Modal auto-fetches logo via Google favicon API with 400ms debounce — falls back to colour initials. × button dismisses the auto-fetched logo for the session.
 - All native `<select>` elements are replaced by a custom JS dropdown (`CustomSelect` class) for consistent cross-browser styling. Sidebar selects get a dark variant automatically.
-- Storage abstraction (`storage.load/create/update/remove`) switches between localStorage and API based on `isLoggedIn`.
+- Storage abstraction (`storage.load/create/update/remove`) always calls the API. 403 responses surface as inline errors in the relevant modal rather than browser dialogs.
 - Settings modal (gear icon in sidebar / mobile header) controls theme, currency, and categories.
 
 ## User preferences (localStorage)
@@ -118,8 +118,6 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 | `bf_currency` | `£` | `£` `$` `€` `¥` `₹` `A$` `C$` `Fr` |
 | `bf_theme` | `sand` | `sand` `slate` `midnight` `forest` `rose` |
 | `bf_categories` | see below | JSON array of `{id, label, color}` objects |
-| `bf_subs` | `[]` | JSON array of subscriptions (anonymous mode only) |
-| `bf_next_id` | `-1` | Decrementing integer for local IDs (anonymous mode only) |
 
 ## Categories
 
