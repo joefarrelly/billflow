@@ -7,8 +7,9 @@ Live at [billflow.fazz.uk](https://billflow.fazz.uk).
 ## Stack
 
 - **Python 3.13** + Flask 3.1.1 + Gunicorn
-- **SQLite** via Flask-SQLAlchemy 3.1.1 — database at `/app/billflow.db` inside the container
+- **PostgreSQL 17** via Flask-SQLAlchemy 3.1.1 + psycopg2-binary — `billflow` database, `billflow` user (Docker-managed)
 - **Flask-Login 0.6.3** + **Authlib 1.3.2** — optional Google SSO; anonymous mode uses localStorage
+- **Alembic 1.14.1** — database migrations (`alembic upgrade head` runs on container start)
 - **Docker** — no venvs, ever. All Python work runs in Docker.
 - Custom CSS frontend (no framework) — DM Sans / Playfair Display / DM Mono fonts
 
