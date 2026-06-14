@@ -3,13 +3,16 @@ import time
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from authlib.integrations.flask_client import OAuth
 from flask_login import LoginManager, login_user, logout_user, current_user
-from flask_migrate import Migrate
 from models import db, User, Subscription
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-    "DATABASE_URL", "sqlite:////app/billflow.db"
-)
+_db_url = os.environ.get("DATABASE_URL")
+if not _db_url:
+    raise RuntimeError(
+        "DATABASE_URL is not set. "
+        "Run via Docker ('docker compose up') or set DATABASE_URL in .env."
+    )
+app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
@@ -18,7 +21,6 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 _oauth_states: dict[str, dict] = {}
 
 db.init_app(app)
-Migrate(app, db)
 
 login_manager = LoginManager(app)
 
