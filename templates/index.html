@@ -1140,7 +1140,7 @@ body {
 
         <!-- bar chart -->
         <div class="bar-chart">
-          <div class="bar-chart-title">Monthly spend — <span id="chart-year"></span></div>
+          <div class="bar-chart-title">Monthly spend · <span id="chart-year"></span></div>
           <div class="bars" id="bars"></div>
         </div>
 
@@ -1267,7 +1267,7 @@ body {
     <div class="fr">
       <div class="fg day-field-wrap" id="day-wrap">
         <label class="fl">Day of Month</label>
-        <input type="number" class="fi" id="f-day" placeholder="1–28" min="1" max="28">
+        <input type="number" class="fi" id="f-day" placeholder="1-28" min="1" max="28">
       </div>
       <div class="fg" id="anchor-wrap" style="display:none">
         <label class="fl">First payment date</label>
@@ -1510,7 +1510,7 @@ function dueMonths(sub) {
 }
 
 /* Day-of-month numbers a sub is billed on within a given calendar month.
-   Fixed frequencies land on a single day; fortnightly can land 2–3 times.
+   Fixed frequencies land on a single day; fortnightly can land 2-3 times.
    Fortnightly stepping is done in UTC to stay immune to DST shifts. */
 function occurrencesInMonth(sub, year, month) {
   if (sub.freq === 'fortnightly') {
@@ -1701,7 +1701,7 @@ function tryLoadClearbit(name) {
   const url = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
   const img = new Image();
   img.onload = () => {
-    // Google returns a generic globe icon (size 16x16) when it has nothing — skip it
+    // Google returns a generic globe icon (size 16x16) when it has nothing, so skip it
     if (img.naturalWidth <= 16 && img.naturalHeight <= 16) {
       if (pendingIconUrl && pendingIconUrl.includes('google.com/s2/favicons')) pendingIconUrl = null;
       updateModalIconPreview();
@@ -1752,7 +1752,7 @@ function onNameInput() {
 /* ── POT MATHS ────────────────────────────────────────── */
 const BILL_FREQS = ['monthly', 'fortnightly'];
 
-/* Monthly-equivalent of everything billed less often than monthly — the
+/* Monthly-equivalent of everything billed less often than monthly: the
    amount to feed the "annual expenses" pot each month. */
 function annualExpensesPerMonth() {
   return subs
@@ -1810,7 +1810,7 @@ function renderCalendar() {
     const isToday = cell.cur && isCur && cell.day===today.getDate();
     const pills = cell.cur
       ? monthHits.filter(h => h.day===cell.day)
-            .map(h => calDisplay === 'icons' ? calIconPill(h.sub) : `<span class="pill cat-${h.sub.category}" title="${h.sub.name} — ${fmt(h.sub.amount)}">${h.sub.name}</span>`).join('')
+            .map(h => calDisplay === 'icons' ? calIconPill(h.sub) : `<span class="pill cat-${h.sub.category}" title="${h.sub.name}: ${fmt(h.sub.amount)}">${h.sub.name}</span>`).join('')
       : '';
     return `<div class="cal-cell${!cell.cur?' dim':''}${isToday?' today':''}">
       <div class="dnum">${cell.day}</div>${calDisplay === 'icons' ? `<div class="cal-icons-row">${pills}</div>` : pills}</div>`;
@@ -1822,7 +1822,7 @@ function calIconPill(s) {
   const inner = s.icon
     ? `<img src="${s.icon}" alt="${s.name}" style="width:100%;height:100%;object-fit:contain;padding:2px;background:#fff;" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\\'font-size:.5rem\\'>${ini}</span>'">`
     : `<span style="font-size:.5rem">${ini}</span>`;
-  return `<span class="cal-icon-pill" title="${s.name} — ${fmt(s.amount)}" style="background:${s.color}26;color:${s.color}">${inner}</span>`;
+  return `<span class="cal-icon-pill" title="${s.name}: ${fmt(s.amount)}" style="background:${s.color}26;color:${s.color}">${inner}</span>`;
 }
 
 function changeMonth(d) {
@@ -1912,7 +1912,7 @@ function renderYearly() {
   document.getElementById('ys-high').textContent       = fmt(totals[highIdx]||0);
   document.getElementById('ys-high-month').textContent = MONTHS[highIdx];
   document.getElementById('ys-low').textContent        = fmt(minNonZero===Infinity?0:minNonZero);
-  document.getElementById('ys-low-month').textContent  = minNonZero===Infinity ? '—' : MONTHS[lowIdx];
+  document.getElementById('ys-low-month').textContent  = minNonZero===Infinity ? '-' : MONTHS[lowIdx];
 
   document.getElementById('bars').innerHTML = totals.map((t,i) => {
     const pct = Math.round((t/maxT)*100);
@@ -1936,8 +1936,8 @@ function renderYearly() {
     }).join('');
     return `<div class="mt-row${isCur?' current':''}">
       <div class="mt-month">${isCur?'<span class="cur-dot"></span>':''}${MONTHS[i]}</div>
-      <div class="mt-pills">${pills||'<span style="color:var(--ink-faint);font-size:.78rem">—</span>'}</div>
-      <div class="mt-amount${t===0?' zero':''}">${t===0?'—':fmt(t)}</div>
+      <div class="mt-pills">${pills||'<span style="color:var(--ink-faint);font-size:.78rem">-</span>'}</div>
+      <div class="mt-amount${t===0?' zero':''}">${t===0?'-':fmt(t)}</div>
     </div>`;
   }).join('');
 }
@@ -1972,7 +1972,7 @@ function renderPots() {
         <span class="pot-name">Annual expenses</span>
       </div>
       <div class="pot-amount">${fmt(annualPot)}<span>/mo</span></div>
-      <div class="pot-note">auto — from your quarterly &amp; annual bills</div>
+      <div class="pot-note">auto · from your quarterly &amp; annual bills</div>
       <div class="pot-split">
         <span>${escAttr(personA)} ${fmt(annualA)}</span>
         <span>${escAttr(personB)} ${fmt(annualB)}</span>
@@ -2094,7 +2094,7 @@ function renderSettingsHousehold() {
   const s = incomeSplit();
   const hint = (incomeA > 0 && incomeB > 0)
     ? `Shared costs split ${personA} ${Math.round(s.a*100)}% · ${personB} ${Math.round(s.b*100)}%`
-    : 'Add both net monthly incomes to split shared costs by ratio — otherwise 50/50.';
+    : 'Add both net monthly incomes to split shared costs by ratio, otherwise 50/50.';
   document.getElementById('settings-household').innerHTML = `
     <div class="hh-row">
       <input class="fi" value="${escAttr(personA)}" onchange="setHousehold('personA',this.value)" placeholder="Person A name">
