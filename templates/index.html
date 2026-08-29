@@ -462,7 +462,7 @@ body {
 }
 .seg.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 .hh-row { display: flex; gap: 8px; margin-bottom: 8px; }
-.hh-row .fi:first-child { flex: 1.2; }
+.hh-row .fi { flex: 1 1 0; min-width: 0; }
 .hh-hint { font-size: .72rem; color: var(--ink-muted); margin-top: 2px; }
 
 /* ══════════════════════════════════════════════════════════
@@ -586,6 +586,46 @@ body {
   text-align: right; color: var(--accent);
 }
 .mt-amount.zero { color: var(--ink-faint); font-family: 'DM Sans', sans-serif; font-size: .85rem; font-weight: 400; }
+
+/* ══════════════════════════════════════════════════════════
+   POTS VIEW
+══════════════════════════════════════════════════════════ */
+.pots-panel { padding: 28px 32px; }
+.pots-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; margin-bottom: 22px;
+}
+.pots-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 600; }
+.pots-sub { font-size: .82rem; color: var(--ink-muted); margin-top: 2px; }
+.pot-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.pot-card {
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px; background: var(--surface);
+}
+.pot-card-top { display: flex; align-items: center; gap: 8px; }
+.pot-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.pot-name { font-weight: 600; font-size: .9rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pot-actions { display: flex; gap: 4px; }
+.pot-amount {
+  font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 600;
+  color: var(--accent); margin-top: 10px;
+}
+.pot-amount span { font-family: 'DM Sans', sans-serif; font-size: .8rem; color: var(--ink-muted); font-weight: 400; }
+.pot-note { font-size: .74rem; color: var(--ink-muted); margin-top: 4px; }
+.pot-split {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-lt);
+  font-size: .72rem; color: var(--ink-muted);
+}
+.pots-total {
+  margin-top: 22px; padding: 16px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+}
+.pots-total-row { display: flex; justify-content: space-between; align-items: baseline; }
+.pots-total-row strong { font-family: 'Playfair Display', serif; font-size: 1.35rem; color: var(--accent); }
 
 /* ══════════════════════════════════════════════════════════
    MODAL
@@ -920,14 +960,14 @@ body {
 
     <div class="sum-stack">
       <div class="sum-card">
-        <div class="lbl">Monthly Average</div>
+        <div class="lbl">Monthly Bills</div>
         <div class="val" id="sb-monthly">0.00</div>
         <div class="hint" id="sb-count">0 subscriptions</div>
       </div>
       <div class="sum-card">
-        <div class="lbl">Annual Total</div>
+        <div class="lbl">Set Aside / mo</div>
         <div class="val" id="sb-annual">0.00</div>
-        <div class="hint">projected spend</div>
+        <div class="hint">into pots</div>
       </div>
     </div>
 
@@ -939,6 +979,10 @@ body {
       <button class="nav-btn" id="snav-yearly" onclick="setView('yearly')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         Yearly Overview
+      </button>
+      <button class="nav-btn" id="snav-pots" onclick="setView('pots')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h16l-1.2 11a2 2 0 0 1-2 1.8H7.2a2 2 0 0 1-2-1.8L4 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+        Pots
       </button>
     </nav>
 
@@ -974,8 +1018,8 @@ body {
     </div>
   </div>
   <div class="mobile-sum">
-    <div class="mob-sum-card"><div class="ms-lbl">Monthly avg</div><div class="ms-val" id="mob-monthly">0</div></div>
-    <div class="mob-sum-card"><div class="ms-lbl">Annual</div><div class="ms-val" id="mob-annual">0</div></div>
+    <div class="mob-sum-card"><div class="ms-lbl">Monthly bills</div><div class="ms-val" id="mob-monthly">0</div></div>
+    <div class="mob-sum-card"><div class="ms-lbl">Set aside / mo</div><div class="ms-val" id="mob-annual">0</div></div>
     <div id="mobile-auth" style="grid-column:1/-1"></div>
   </div>
 
@@ -998,6 +1042,7 @@ body {
       <button class="mob-tab active" id="mob-tab-cal" onclick="setMobileTab('cal')">Calendar</button>
       <button class="mob-tab" id="mob-tab-list" onclick="setMobileTab('list')">All Bills</button>
       <button class="mob-tab" id="mob-tab-yearly" onclick="setMobileTab('yearly')">Yearly</button>
+      <button class="mob-tab" id="mob-tab-pots" onclick="setMobileTab('pots')">Pots</button>
     </div>
 
     <!-- ═══ VIEW: CALENDAR + LIST ═══ -->
@@ -1109,6 +1154,24 @@ body {
           <div id="mt-body"></div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- ═══ VIEW: POTS ═══ -->
+    <div class="view" id="view-pots">
+      <div class="pots-panel">
+        <div class="pots-head">
+          <div>
+            <div class="pots-title">Monthly pots</div>
+            <div class="pots-sub">How much to move into each pot every month</div>
+          </div>
+          <button class="add-btn" onclick="openPotModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add pot
+          </button>
+        </div>
+        <div class="pot-grid" id="pot-grid"></div>
+        <div class="pots-total" id="pots-total"></div>
       </div>
     </div>
 
@@ -1258,6 +1321,39 @@ body {
   </div>
 </div>
 
+<!-- ══════════ POT MODAL ══════════ -->
+<div class="backdrop" id="pot-backdrop" onclick="closePotBackdrop(event)">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title" id="pot-modal-title">Add pot</div>
+
+    <div class="fg">
+      <label class="fl">Pot name</label>
+      <input type="text" class="fi" id="p-name" placeholder="e.g. House &amp; garden">
+    </div>
+
+    <div class="fg">
+      <label class="fl" id="p-amount-label">Monthly amount (£)</label>
+      <input type="number" class="fi" id="p-amount" placeholder="0.00" min="0" step="0.01">
+    </div>
+
+    <div class="fg">
+      <label class="fl">Note (optional)</label>
+      <input type="text" class="fi" id="p-note" placeholder="What's it for?">
+    </div>
+
+    <div class="fg">
+      <label class="fl">Colour</label>
+      <div class="color-row" id="p-color-row"></div>
+    </div>
+
+    <div class="modal-footer">
+      <span id="pot-modal-error" style="font-size:.78rem;color:var(--accent);flex:1;display:none"></span>
+      <button class="btn btn-ghost" onclick="closePotModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePot()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ── CONSTANTS ─────────────────────────────────────────── */
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1329,6 +1425,7 @@ function catLabel(id) {
 
 /* ── STATE ─────────────────────────────────────────────── */
 let subs = [];
+let pots = [];
 let editId = null;
 let selColor = COLORS[0];
 let pendingIconUrl = null;
@@ -1357,6 +1454,13 @@ const storage = {
   create: async (data)     => (await apiCall('/api/subscriptions', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})).json(),
   update: async (id, data) => (await apiCall(`/api/subscriptions/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})).json(),
   remove: async (id)       => apiCall(`/api/subscriptions/${id}`, {method:'DELETE'}),
+};
+
+const potStore = {
+  load:   async ()         => (await apiCall('/api/pots')).json(),
+  create: async (data)     => (await apiCall('/api/pots', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})).json(),
+  update: async (id, data) => (await apiCall(`/api/pots/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})).json(),
+  remove: async (id)       => apiCall(`/api/pots/${id}`, {method:'DELETE'}),
 };
 
 async function initAuth() {
@@ -1389,7 +1493,7 @@ async function initAuth() {
 }
 
 async function loadSubs() {
-  subs = await storage.load();
+  [subs, pots] = await Promise.all([storage.load(), potStore.load()]);
   refresh();
 }
 
@@ -1645,22 +1749,39 @@ function onNameInput() {
   }, 400);
 }
 
+/* ── POT MATHS ────────────────────────────────────────── */
+const BILL_FREQS = ['monthly', 'fortnightly'];
+
+/* Monthly-equivalent of everything billed less often than monthly — the
+   amount to feed the "annual expenses" pot each month. */
+function annualExpensesPerMonth() {
+  return subs
+    .filter(s => !BILL_FREQS.includes(s.freq))
+    .reduce((a, s) => a + monthlyEquiv(s), 0);
+}
+function customPotsTotal() {
+  return pots.reduce((a, p) => a + p.monthlyAmount, 0);
+}
+/* Monthly-equivalent of the annual-expenses pot, split by payer. */
+function annualExpensesByPayer() {
+  const by = { a: 0, b: 0, shared: 0 };
+  subs.filter(s => !BILL_FREQS.includes(s.freq))
+      .forEach(s => { by[s.payer || 'shared'] += monthlyEquiv(s); });
+  return by;
+}
+
 /* ── SIDEBAR SUMMARY ──────────────────────────────────── */
 function updateSummary() {
-  const monthly = subs.reduce((a,s) => a + monthlyEquiv(s), 0);
-  const annual  = subs.reduce((a,s) => {
-    if (s.freq==='monthly')     return a + s.amount*12;
-    if (s.freq==='fortnightly') return a + s.amount*FORTNIGHTLY_PER_YEAR;
-    if (s.freq==='quarterly')   return a + s.amount*4;
-    if (s.freq==='annual')      return a + s.amount;
-    return a;
-  }, 0);
+  const bills = subs
+    .filter(s => BILL_FREQS.includes(s.freq))
+    .reduce((a, s) => a + monthlyEquiv(s), 0);
+  const setAside = annualExpensesPerMonth() + customPotsTotal();
 
-  document.getElementById('sb-monthly').textContent   = fmt(monthly);
-  document.getElementById('sb-annual').textContent    = fmt(annual);
+  document.getElementById('sb-monthly').textContent   = fmt(bills);
+  document.getElementById('sb-annual').textContent    = fmt(setAside);
   document.getElementById('sb-count').textContent     = `${subs.length} subscription${subs.length!==1?'s':''}`;
-  document.getElementById('mob-monthly').textContent  = fmt(monthly);
-  document.getElementById('mob-annual').textContent   = fmt(annual);
+  document.getElementById('mob-monthly').textContent  = fmt(bills);
+  document.getElementById('mob-annual').textContent   = fmt(setAside);
 }
 
 /* ── CALENDAR ─────────────────────────────────────────── */
@@ -1824,6 +1945,130 @@ function renderYearly() {
 function changeYear(d) {
   yrYear += d;
   renderYearly();
+}
+
+/* ── POTS VIEW ────────────────────────────────────────── */
+function splitLine(amount) {
+  const s = incomeSplit();
+  return `<div class="pot-split">
+    <span>${escAttr(personA)} ${fmt(amount * s.a)}</span>
+    <span>${escAttr(personB)} ${fmt(amount * s.b)}</span>
+  </div>`;
+}
+
+function renderPots() {
+  const annualPot = annualExpensesPerMonth();
+  const byPayer = annualExpensesByPayer();
+  const s = incomeSplit();
+  // Each person's share of the annual pot: their own-tagged bills in full,
+  // plus their income-weighted slice of the shared ones.
+  const annualA = byPayer.a + byPayer.shared * s.a;
+  const annualB = byPayer.b + byPayer.shared * s.b;
+
+  const autoCard = `
+    <div class="pot-card">
+      <div class="pot-card-top">
+        <span class="pot-dot" style="background:#B07E18"></span>
+        <span class="pot-name">Annual expenses</span>
+      </div>
+      <div class="pot-amount">${fmt(annualPot)}<span>/mo</span></div>
+      <div class="pot-note">auto — from your quarterly &amp; annual bills</div>
+      <div class="pot-split">
+        <span>${escAttr(personA)} ${fmt(annualA)}</span>
+        <span>${escAttr(personB)} ${fmt(annualB)}</span>
+      </div>
+    </div>`;
+
+  const potCards = pots.map(p => `
+    <div class="pot-card">
+      <div class="pot-card-top">
+        <span class="pot-dot" style="background:${p.color}"></span>
+        <span class="pot-name">${escAttr(p.name)}</span>
+        <div class="pot-actions">
+          <button class="ibt" onclick="openPotModal(${p.id})" title="Edit">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="ibt del" onclick="delPot(${p.id})" title="Delete">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="pot-amount">${fmt(p.monthlyAmount)}<span>/mo</span></div>
+      ${p.note ? `<div class="pot-note">${escAttr(p.note)}</div>` : ''}
+      ${splitLine(p.monthlyAmount)}
+    </div>`).join('');
+
+  document.getElementById('pot-grid').innerHTML = autoCard + potCards;
+
+  const total = annualPot + customPotsTotal();
+  const totalA = annualA + customPotsTotal() * s.a;
+  const totalB = annualB + customPotsTotal() * s.b;
+  document.getElementById('pots-total').innerHTML = `
+    <div class="pots-total-row"><span>Total to set aside each month</span><strong>${fmt(total)}</strong></div>
+    <div class="pot-split">
+      <span>${escAttr(personA)} ${fmt(totalA)}</span>
+      <span>${escAttr(personB)} ${fmt(totalB)}</span>
+    </div>`;
+}
+
+/* ── POT MODAL ────────────────────────────────────────── */
+let potEditId = null;
+let potColor = COLORS[0];
+
+function buildPotColors() {
+  document.getElementById('p-color-row').innerHTML = COLORS.map(c =>
+    `<div class="swatch${c===potColor?' on':''}" style="background:${c}" onclick="pickPotColor('${c}')"></div>`
+  ).join('');
+}
+function pickPotColor(c) { potColor = c; buildPotColors(); }
+
+function openPotModal(id) {
+  potEditId = id || null;
+  const p = id ? pots.find(x => x.id === id) : null;
+  document.getElementById('pot-modal-title').textContent = id ? 'Edit pot' : 'Add pot';
+  document.getElementById('p-name').value   = p?.name || '';
+  document.getElementById('p-amount').value = p?.monthlyAmount || '';
+  document.getElementById('p-note').value   = p?.note || '';
+  potColor = p?.color || COLORS[0];
+  buildPotColors();
+  document.getElementById('p-amount-label').textContent = `Monthly amount (${currency})`;
+  clearPotError();
+  document.getElementById('pot-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('p-name').focus(), 50);
+}
+function closePotModal() { document.getElementById('pot-backdrop').classList.remove('open'); }
+function closePotBackdrop(e) { if (e.target === e.currentTarget) closePotModal(); }
+function showPotError(m) { const el = document.getElementById('pot-modal-error'); el.textContent = m; el.style.display = 'block'; }
+function clearPotError() { const el = document.getElementById('pot-modal-error'); el.textContent = ''; el.style.display = 'none'; }
+
+async function savePot() {
+  clearPotError();
+  const name = document.getElementById('p-name').value.trim();
+  const monthlyAmount = parseFloat(document.getElementById('p-amount').value);
+  const note = document.getElementById('p-note').value.trim() || null;
+  if (!name || isNaN(monthlyAmount) || monthlyAmount <= 0) {
+    showPotError('Please give the pot a name and a valid monthly amount.');
+    return;
+  }
+  const payload = { name, monthlyAmount, note, color: potColor };
+  try {
+    if (potEditId) await potStore.update(potEditId, payload);
+    else await potStore.create(payload);
+  } catch (e) { showPotError(e.message); return; }
+  closePotModal();
+  await loadSubs();
+}
+
+let _pendingPotDelId = null;
+function delPot(id) {
+  const p = pots.find(x => x.id === id);
+  _pendingPotDelId = id;
+  _pendingDelId = null;
+  document.getElementById('confirm-title').textContent = 'Remove pot?';
+  document.getElementById('confirm-body').textContent =
+    p ? `"${p.name}" will be permanently removed.` : 'This pot will be permanently removed.';
+  document.getElementById('confirm-error').style.display = 'none';
+  document.getElementById('confirm-backdrop').classList.add('open');
 }
 
 /* ── SETTINGS ─────────────────────────────────────────── */
@@ -2073,6 +2318,8 @@ let _pendingDelId = null;
 function delSub(id) {
   const sub = subs.find(s => s.id === id);
   _pendingDelId = id;
+  _pendingPotDelId = null;
+  document.getElementById('confirm-title').textContent = 'Remove subscription?';
   document.getElementById('confirm-body').textContent =
     sub ? `"${sub.name}" will be permanently removed.` : 'This subscription will be permanently removed.';
   document.getElementById('confirm-error').style.display = 'none';
@@ -2081,6 +2328,7 @@ function delSub(id) {
 
 function closeConfirm() {
   _pendingDelId = null;
+  _pendingPotDelId = null;
   document.getElementById('confirm-backdrop').classList.remove('open');
 }
 
@@ -2089,9 +2337,10 @@ function closeConfirmBackdrop(e) {
 }
 
 async function executeConfirm() {
-  if (_pendingDelId === null) return;
+  if (_pendingDelId === null && _pendingPotDelId === null) return;
   try {
-    await storage.remove(_pendingDelId);
+    if (_pendingPotDelId !== null) await potStore.remove(_pendingPotDelId);
+    else await storage.remove(_pendingDelId);
   } catch (e) {
     const err = document.getElementById('confirm-error');
     err.textContent = e.message;
@@ -2141,27 +2390,33 @@ async function saveSubscription() {
 }
 
 /* ── VIEW SWITCHING ───────────────────────────────────── */
+const VIEW_LABELS = { calendar: 'Calendar & List', yearly: 'Yearly Overview', pots: 'Pots' };
+
 function setView(v) {
   currentView = v;
-  ['calendar','yearly'].forEach(x => {
+  ['calendar','yearly','pots'].forEach(x => {
     document.getElementById('view-'+x).classList.toggle('active', x===v);
     const snav = document.getElementById('snav-'+x);
     if (snav) snav.classList.toggle('active', x===v);
   });
-  document.getElementById('view-label').textContent =
-    v==='calendar' ? 'Calendar & List' : 'Yearly Overview';
+  document.getElementById('view-label').textContent = VIEW_LABELS[v] || 'Calendar & List';
   if (v==='yearly') renderYearly();
+  if (v==='pots') renderPots();
 }
 
 /* mobile tabs */
 function setMobileTab(tab) {
   mobileTab = tab;
-  ['cal','list','yearly'].forEach(t => {
+  ['cal','list','yearly','pots'].forEach(t => {
     document.getElementById('mob-tab-'+t).classList.toggle('active', t===tab);
   });
 
   if (tab==='yearly') {
     setView('yearly');
+    return;
+  }
+  if (tab==='pots') {
+    setView('pots');
     return;
   }
 
@@ -2197,6 +2452,7 @@ function refresh() {
   renderCalendar();
   renderList();
   if (currentView==='yearly') renderYearly();
+  if (currentView==='pots') renderPots();
 }
 
 /* ── CUSTOM SELECT ────────────────────────────────────── */

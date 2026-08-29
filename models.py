@@ -15,6 +15,9 @@ class User(UserMixin, db.Model):
     subscriptions = db.relationship(
         "Subscription", backref="user", lazy=True, cascade="all, delete-orphan"
     )
+    pots = db.relationship(
+        "Pot", backref="user", lazy=True, cascade="all, delete-orphan"
+    )
 
     def get_settings(self):
         return json.loads(self.settings) if self.settings else None
@@ -55,4 +58,32 @@ class Subscription(db.Model):
             "icon": self.icon,
             "anchorDate": self.anchor_date.isoformat() if self.anchor_date else None,
             "payer": self.payer,
+        }
+
+
+class Pot(db.Model):
+    """A named monthly set-aside target (e.g. "House & garden").
+
+    Pots track only how much to put aside each month, not a running
+    balance. The built-in "annual expenses" pot is computed on the
+    frontend from quarterly/annual subscriptions and is not stored here.
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id"), nullable=False, index=True
+    )
+    name = db.Column(db.String(120), nullable=False)
+    monthly_amount = db.Column(db.Float, nullable=False)
+    color = db.Column(db.String(20), nullable=False)
+    note = db.Column(db.String(300), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "monthlyAmount": self.monthly_amount,
+            "color": self.color,
+            "note": self.note,
         }

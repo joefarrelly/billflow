@@ -6,7 +6,7 @@ from authlib.integrations.flask_client import OAuth
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_login import LoginManager, current_user, login_user, logout_user
 
-from models import Subscription, User, db
+from models import Pot, Subscription, User, db
 
 app = Flask(__name__)
 
@@ -217,6 +217,63 @@ def delete_sub(sub_id):
     return "", 204
 
 
+@app.route("/api/pots", methods=["GET"])
+def list_pots():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not authenticated"}), 401
+    pots = Pot.query.filter_by(user_id=current_user.id).order_by(Pot.created_at).all()
+    return jsonify([p.to_dict() for p in pots])
+
+
+@app.route("/api/pots", methods=["POST"])
+def create_pot():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not authenticated"}), 401
+    if current_user.email == DEMO_EMAIL:
+        return jsonify({"error": "demo account is read-only"}), 403
+    data = request.get_json(force=True)
+    pot = Pot(
+        user_id=current_user.id,
+        name=data["name"],
+        monthly_amount=float(data["monthlyAmount"]),
+        color=data["color"],
+        note=data.get("note"),
+    )
+    db.session.add(pot)
+    db.session.commit()
+    return jsonify(pot.to_dict()), 201
+
+
+@app.route("/api/pots/<int:pot_id>", methods=["PUT"])
+def update_pot(pot_id):
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not authenticated"}), 401
+    if current_user.email == DEMO_EMAIL:
+        return jsonify({"error": "demo account is read-only"}), 403
+    pot = Pot.query.filter_by(id=pot_id, user_id=current_user.id).first_or_404()
+    data = request.get_json(force=True)
+    pot.name = data.get("name", pot.name)
+    if "monthlyAmount" in data:
+        pot.monthly_amount = float(data["monthlyAmount"])
+    pot.color = data.get("color", pot.color)
+    if "note" in data:
+        pot.note = data["note"]
+    db.session.commit()
+    return jsonify(pot.to_dict())
+
+
+@app.route("/api/pots/<int:pot_id>", methods=["DELETE"])
+def delete_pot(pot_id):
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not authenticated"}), 401
+    if current_user.email == DEMO_EMAIL:
+        return jsonify({"error": "demo account is read-only"}), 403
+    pot = Pot.query.filter_by(id=pot_id, user_id=current_user.id).first_or_404()
+    db.session.delete(pot)
+    db.session.commit()
+    return "", 204
+
+
 @app.route("/api/settings", methods=["GET"])
 def get_settings():
     if not current_user.is_authenticated:
@@ -325,6 +382,24 @@ def seed_demo_user():
                 ),
             ]
             db.session.add_all(demo_subs)
+            db.session.add_all(
+                [
+                    Pot(
+                        user_id=user.id,
+                        name="House & garden",
+                        monthly_amount=150.0,
+                        color="#3A7A58",
+                        note="Doing up the house and garden",
+                    ),
+                    Pot(
+                        user_id=user.id,
+                        name="Car maintenance",
+                        monthly_amount=40.0,
+                        color="#2E5FA3",
+                        note=None,
+                    ),
+                ]
+            )
             db.session.commit()
 
 
