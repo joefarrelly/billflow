@@ -8,7 +8,7 @@ Live at [billflow.fazz.uk](https://billflow.fazz.uk).
 
 - **Python 3.13** + Flask 3.1.1 + Gunicorn
 - **PostgreSQL 17** via Flask-SQLAlchemy 3.1.1 + psycopg2-binary — `billflow` database, `billflow` user (Docker-managed)
-- **Flask-Login 0.6.3** + **Authlib 1.3.2** — optional Google SSO; anonymous mode uses localStorage
+- **Flask-Login 0.6.3** + **Authlib 1.3.2** — Google SSO required; demo user for try-without-signup
 - **Alembic 1.14.1** — database migrations (`alembic upgrade head` runs on container start)
 - **Docker** — no venvs, ever. All Python work runs in Docker.
 - Custom CSS frontend (no framework) — DM Sans / Playfair Display / DM Mono fonts
@@ -17,9 +17,10 @@ Live at [billflow.fazz.uk](https://billflow.fazz.uk).
 
 ```
 app.py              Flask app + REST API + auth routes
-models.py           SQLAlchemy User and Subscription models
+models.py           SQLAlchemy User, Subscription, and Pot models
 templates/
   index.html        Full standalone template (all CSS/JS inline, no base inheritance)
+  login.html        Standalone login page (Google SSO + demo)
 static/
   icons/            Favicon/logo cache (gitignored)
 requirements.txt
@@ -44,8 +45,8 @@ App runs at http://localhost:5003.
 
 ```
 SECRET_KEY=any-random-string
-GOOGLE_CLIENT_ID=      # from Google Cloud Console (optional — anonymous mode works without it)
-GOOGLE_CLIENT_SECRET=  # from Google Cloud Console (optional)
+GOOGLE_CLIENT_ID=      # from Google Cloud Console (demo mode works without it)
+GOOGLE_CLIENT_SECRET=  # from Google Cloud Console (demo mode works without it)
 ```
 
 `AUTHLIB_INSECURE_TRANSPORT=1` and `OAUTH_REDIRECT_URI=http://localhost:5003/auth/callback` are set automatically in docker-compose for local HTTP development.
@@ -56,12 +57,12 @@ Flask does not emit a `Set-Cookie` header on the 302 redirect response from `/au
 
 ## Auth model
 
-The app works in two modes:
+Login is required. Unauthenticated requests to `/` redirect to `/login`.
 
-- **Anonymous** — no sign-in required. Subscription data lives in `localStorage` (`bf_subs`, `bf_next_id`). Full functionality except server sync.
-- **Signed in** — Google OAuth via `/auth/google`. On first sign-in, any localStorage data is automatically migrated to the server. All reads/writes go to the API.
+- **Google SSO** — via `/auth/google`. Creates a user row on first sign-in. Full read/write access.
+- **Demo** — via `/auth/demo`. Logs in as `demo@billflow.app`, seeded at startup with sample subscriptions (incl. a fortnightly one) and pots. Write routes return `403` for this account.
 
-All API routes return `401 JSON` (not a redirect) when unauthenticated, so the frontend stays in local mode gracefully.
+`/login` redirects to `/` if already authenticated. `/logout` redirects to `/login`.
 
 ## API
 
@@ -71,10 +72,13 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 |--------|------|-------------|
 | GET | `/api/me` | Returns `{email}` if authenticated, 401 otherwise |
 | GET | `/api/subscriptions` | List user's subscriptions |
-| POST | `/api/subscriptions` | Create subscription |
-| PUT | `/api/subscriptions/<id>` | Update subscription |
-| DELETE | `/api/subscriptions/<id>` | Delete subscription |
-| POST | `/api/migrate` | Migrate localStorage subs to server (skips if user already has server data) |
+| POST | `/api/subscriptions` | Create subscription (403 for demo) |
+| PUT | `/api/subscriptions/<id>` | Update subscription (403 for demo) |
+| DELETE | `/api/subscriptions/<id>` | Delete subscription (403 for demo) |
+| GET | `/api/pots` | List user's monthly pots |
+| POST | `/api/pots` | Create pot (403 for demo) |
+| PUT | `/api/pots/<id>` | Update pot (403 for demo) |
+| DELETE | `/api/pots/<id>` | Delete pot (403 for demo) |
 
 ### Subscription shape (JSON)
 
@@ -88,28 +92,35 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
   "startMonth": 0,
   "category": "entertainment",
   "color": "#2E5FA3",
-  "icon": null
+  "icon": null,
+  "anchorDate": null,
+  "payer": "shared"
 }
 ```
 
-`freq`: `monthly` | `quarterly` | `annual`  
+`freq`: `monthly` | `fortnightly` | `quarterly` | `annual`  
 `startMonth`: 0–11 (January–December) — used as first billing month for quarterly/annual  
-`icon`: `null` or a Google favicon URL (`https://www.google.com/s2/favicons?domain=...&sz=64`)
+`icon`: `null` or a Google favicon URL (`https://www.google.com/s2/favicons?domain=...&sz=64`)  
+`anchorDate`: `null` except for `fortnightly` — ISO date the 14-day cycle counts from  
+`payer`: `a` | `b` | `shared` — the two people are named in user settings (`personA`/`personB`)
 
 ## Data model
 
-`User` columns: `id`, `email`, `created_at`  
-`Subscription` columns: `id`, `user_id` (FK), `name`, `amount`, `frequency`, `day`, `start_month`, `category`, `color`, `icon`
+`User` columns: `id`, `email`, `created_at`, `settings` (JSON: theme, currency, calDisplay, categories, `personA`, `personB`, `incomeA`, `incomeB`)  
+`Subscription` columns: `id`, `user_id` (FK), `name`, `amount`, `frequency`, `day`, `start_month`, `category`, `color`, `icon`, `anchor_date`, `payer`  
+`Pot` columns: `id`, `user_id` (FK), `name`, `monthly_amount`, `color`, `note`, `created_at` — user-named monthly set-aside targets; no balance tracking. The "annual expenses" pot shown in the UI is computed from quarterly/annual subs, not stored.
 
 ## Frontend behaviour
 
 - Calendar view shows bills due per day, with month total banner
 - List view is searchable/filterable by category; shows days-until for monthly subs
 - Yearly view shows bar chart + monthly breakdown table
+- Pots view shows the computed "annual expenses" pot plus user-created pots, each split between the two people by income ratio (50/50 if incomes unset), with a monthly total
+- Sidebar summary shows "Monthly Bills" (monthly + fortnightly) and "Set Aside / mo" (annual-expenses pot + user pots)
 - Modal auto-fetches logo via Google favicon API with 400ms debounce — falls back to colour initials. × button dismisses the auto-fetched logo for the session.
 - All native `<select>` elements are replaced by a custom JS dropdown (`CustomSelect` class) for consistent cross-browser styling. Sidebar selects get a dark variant automatically.
-- Storage abstraction (`storage.load/create/update/remove`) switches between localStorage and API based on `isLoggedIn`.
-- Settings modal (gear icon in sidebar / mobile header) controls theme, currency, and categories.
+- Storage abstraction (`storage.load/create/update/remove`) always calls the API. 403 responses surface as inline errors in the relevant modal rather than browser dialogs.
+- Settings modal (gear icon in sidebar / mobile header) controls theme, currency, calendar labels, the two household names + net monthly incomes, and categories.
 
 ## User preferences (localStorage)
 
@@ -118,8 +129,10 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 | `bf_currency` | `£` | `£` `$` `€` `¥` `₹` `A$` `C$` `Fr` |
 | `bf_theme` | `sand` | `sand` `slate` `midnight` `forest` `rose` |
 | `bf_categories` | see below | JSON array of `{id, label, color}` objects |
-| `bf_subs` | `[]` | JSON array of subscriptions (anonymous mode only) |
-| `bf_next_id` | `-1` | Decrementing integer for local IDs (anonymous mode only) |
+| `bf_person_a` / `bf_person_b` | `Me` / `Partner` | display names for the two people |
+| `bf_income_a` / `bf_income_b` | `0` | net monthly income, drives the pot split |
+
+All settings keys are also synced to `User.settings` server-side and reloaded on sign-in.
 
 ## Categories
 

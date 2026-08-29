@@ -401,7 +401,7 @@ body {
   border-radius: var(--r);
   padding: 10px 12px;
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   cursor: default;
@@ -416,12 +416,13 @@ body {
   font-size: .72rem; font-weight: 500;
   flex-shrink: 0;
 }
-.s-name { font-size: .88rem; font-weight: 500; }
-.s-meta { font-size: .72rem; color: var(--ink-muted); margin-top: 1px; display: flex; gap: 6px; align-items: center; }
+.s-name { font-size: .88rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-meta { font-size: .72rem; color: var(--ink-muted); margin-top: 1px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .s-right { text-align: right; }
 .s-amount {
   font-family: 'DM Mono', monospace;
   font-size: .88rem; font-weight: 500;
+  white-space: nowrap;
 }
 .s-day { font-size: .7rem; color: var(--ink-muted); margin-top: 2px; }
 .s-day.soon { color: var(--accent); font-weight: 500; }
@@ -447,6 +448,22 @@ body {
   color: var(--ink-muted); border: 1px solid var(--border-lt);
   text-transform: uppercase; letter-spacing: .04em;
 }
+.payer-chip {
+  font-size: .63rem; padding: 1px 6px; border-radius: 999px;
+  background: var(--bg); color: var(--ink-muted);
+  border: 1px solid var(--border-lt);
+}
+.seg-row { display: flex; gap: 6px; }
+.seg {
+  flex: 1; padding: 8px 4px; font: inherit; font-size: .8rem; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--ink-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.seg.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.hh-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.hh-row .fi { flex: 1 1 0; min-width: 0; }
+.hh-hint { font-size: .72rem; color: var(--ink-muted); margin-top: 2px; }
 
 /* ══════════════════════════════════════════════════════════
    YEARLY VIEW
@@ -571,6 +588,46 @@ body {
 .mt-amount.zero { color: var(--ink-faint); font-family: 'DM Sans', sans-serif; font-size: .85rem; font-weight: 400; }
 
 /* ══════════════════════════════════════════════════════════
+   POTS VIEW
+══════════════════════════════════════════════════════════ */
+.pots-panel { padding: 28px 32px; }
+.pots-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; margin-bottom: 22px;
+}
+.pots-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 600; }
+.pots-sub { font-size: .82rem; color: var(--ink-muted); margin-top: 2px; }
+.pot-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.pot-card {
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px; background: var(--surface);
+}
+.pot-card-top { display: flex; align-items: center; gap: 8px; }
+.pot-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.pot-name { font-weight: 600; font-size: .9rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pot-actions { display: flex; gap: 4px; }
+.pot-amount {
+  font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 600;
+  color: var(--accent); margin-top: 10px;
+}
+.pot-amount span { font-family: 'DM Sans', sans-serif; font-size: .8rem; color: var(--ink-muted); font-weight: 400; }
+.pot-note { font-size: .74rem; color: var(--ink-muted); margin-top: 4px; }
+.pot-split {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-lt);
+  font-size: .72rem; color: var(--ink-muted);
+}
+.pots-total {
+  margin-top: 22px; padding: 16px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+}
+.pots-total-row { display: flex; justify-content: space-between; align-items: baseline; }
+.pots-total-row strong { font-family: 'Playfair Display', serif; font-size: 1.35rem; color: var(--accent); }
+
+/* ══════════════════════════════════════════════════════════
    MODAL
 ══════════════════════════════════════════════════════════ */
 .backdrop {
@@ -691,6 +748,8 @@ body {
 .btn-ghost:hover { color: var(--ink); }
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover { filter: brightness(.85); }
+.btn-danger { background: #b91c1c; color: #fff; }
+.btn-danger:hover { filter: brightness(.85); }
 
 /* ── SETTINGS MODAL ─────────────────────────────────────── */
 .settings-modal { width: 440px; max-height: 90vh; overflow-y: auto; }
@@ -901,14 +960,14 @@ body {
 
     <div class="sum-stack">
       <div class="sum-card">
-        <div class="lbl">Monthly Average</div>
+        <div class="lbl">Monthly Bills</div>
         <div class="val" id="sb-monthly">0.00</div>
         <div class="hint" id="sb-count">0 subscriptions</div>
       </div>
       <div class="sum-card">
-        <div class="lbl">Annual Total</div>
+        <div class="lbl">Set Aside / mo</div>
         <div class="val" id="sb-annual">0.00</div>
-        <div class="hint">projected spend</div>
+        <div class="hint">into pots</div>
       </div>
     </div>
 
@@ -920,6 +979,10 @@ body {
       <button class="nav-btn" id="snav-yearly" onclick="setView('yearly')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         Yearly Overview
+      </button>
+      <button class="nav-btn" id="snav-pots" onclick="setView('pots')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h16l-1.2 11a2 2 0 0 1-2 1.8H7.2a2 2 0 0 1-2-1.8L4 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+        Pots
       </button>
     </nav>
 
@@ -955,8 +1018,8 @@ body {
     </div>
   </div>
   <div class="mobile-sum">
-    <div class="mob-sum-card"><div class="ms-lbl">Monthly avg</div><div class="ms-val" id="mob-monthly">0</div></div>
-    <div class="mob-sum-card"><div class="ms-lbl">Annual</div><div class="ms-val" id="mob-annual">0</div></div>
+    <div class="mob-sum-card"><div class="ms-lbl">Monthly bills</div><div class="ms-val" id="mob-monthly">0</div></div>
+    <div class="mob-sum-card"><div class="ms-lbl">Set aside / mo</div><div class="ms-val" id="mob-annual">0</div></div>
     <div id="mobile-auth" style="grid-column:1/-1"></div>
   </div>
 
@@ -979,6 +1042,7 @@ body {
       <button class="mob-tab active" id="mob-tab-cal" onclick="setMobileTab('cal')">Calendar</button>
       <button class="mob-tab" id="mob-tab-list" onclick="setMobileTab('list')">All Bills</button>
       <button class="mob-tab" id="mob-tab-yearly" onclick="setMobileTab('yearly')">Yearly</button>
+      <button class="mob-tab" id="mob-tab-pots" onclick="setMobileTab('pots')">Pots</button>
     </div>
 
     <!-- ═══ VIEW: CALENDAR + LIST ═══ -->
@@ -1028,6 +1092,7 @@ body {
           </div>
 
           <select class="cat-filter" id="cat-filter" onchange="renderList()"></select>
+          <select class="cat-filter" id="payer-filter" onchange="renderList()"></select>
 
           <div class="sub-list" id="sub-list"></div>
         </div>
@@ -1075,7 +1140,7 @@ body {
 
         <!-- bar chart -->
         <div class="bar-chart">
-          <div class="bar-chart-title">Monthly spend — <span id="chart-year"></span></div>
+          <div class="bar-chart-title">Monthly spend · <span id="chart-year"></span></div>
           <div class="bars" id="bars"></div>
         </div>
 
@@ -1089,6 +1154,24 @@ body {
           <div id="mt-body"></div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- ═══ VIEW: POTS ═══ -->
+    <div class="view" id="view-pots">
+      <div class="pots-panel">
+        <div class="pots-head">
+          <div>
+            <div class="pots-title">Monthly pots</div>
+            <div class="pots-sub">How much to move into each pot every month</div>
+          </div>
+          <button class="add-btn" onclick="openPotModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add pot
+          </button>
+        </div>
+        <div class="pot-grid" id="pot-grid"></div>
+        <div class="pots-total" id="pots-total"></div>
       </div>
     </div>
 
@@ -1113,6 +1196,11 @@ body {
     <div class="settings-section">
       <div class="settings-section-title">Calendar labels</div>
       <div class="settings-row" id="settings-cal-display-grid"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Household</div>
+      <div id="settings-household"></div>
     </div>
 
     <div class="settings-section">
@@ -1168,6 +1256,7 @@ body {
         <label class="fl">Frequency</label>
         <select class="fs" id="f-freq" onchange="onFreqChange()">
           <option value="monthly">Monthly</option>
+          <option value="fortnightly">Fortnightly</option>
           <option value="quarterly">Quarterly</option>
           <option value="annual">Annual</option>
         </select>
@@ -1178,7 +1267,11 @@ body {
     <div class="fr">
       <div class="fg day-field-wrap" id="day-wrap">
         <label class="fl">Day of Month</label>
-        <input type="number" class="fi" id="f-day" placeholder="1–28" min="1" max="28">
+        <input type="number" class="fi" id="f-day" placeholder="1-28" min="1" max="28">
+      </div>
+      <div class="fg" id="anchor-wrap" style="display:none">
+        <label class="fl">First payment date</label>
+        <input type="date" class="fi" id="f-anchor">
       </div>
       <div class="fg" id="start-month-wrap">
         <label class="fl" id="start-month-label">Starting Month</label>
@@ -1199,13 +1292,64 @@ body {
     </div>
 
     <div class="fg">
+      <label class="fl">Who's this for?</label>
+      <div class="seg-row" id="f-payer"></div>
+    </div>
+
+    <div class="fg">
       <label class="fl">Colour</label>
       <div class="color-row" id="color-row"></div>
     </div>
 
     <div class="modal-footer">
+      <span id="modal-error" style="font-size:.78rem;color:var(--accent);flex:1;display:none"></span>
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSubscription()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="confirm-backdrop" onclick="closeConfirmBackdrop(event)">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-title" style="font-size:1.05rem" id="confirm-title">Remove subscription?</div>
+    <p id="confirm-body" style="font-size:.875rem;color:var(--ink-muted);margin-top:8px"></p>
+    <div class="modal-footer" style="margin-top:20px">
+      <span id="confirm-error" style="font-size:.78rem;color:var(--accent);flex:1;display:none"></span>
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok" onclick="executeConfirm()">Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ POT MODAL ══════════ -->
+<div class="backdrop" id="pot-backdrop" onclick="closePotBackdrop(event)">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title" id="pot-modal-title">Add pot</div>
+
+    <div class="fg">
+      <label class="fl">Pot name</label>
+      <input type="text" class="fi" id="p-name" placeholder="e.g. House &amp; garden">
+    </div>
+
+    <div class="fg">
+      <label class="fl" id="p-amount-label">Monthly amount (£)</label>
+      <input type="number" class="fi" id="p-amount" placeholder="0.00" min="0" step="0.01">
+    </div>
+
+    <div class="fg">
+      <label class="fl">Note (optional)</label>
+      <input type="text" class="fi" id="p-note" placeholder="What's it for?">
+    </div>
+
+    <div class="fg">
+      <label class="fl">Colour</label>
+      <div class="color-row" id="p-color-row"></div>
+    </div>
+
+    <div class="modal-footer">
+      <span id="pot-modal-error" style="font-size:.78rem;color:var(--accent);flex:1;display:none"></span>
+      <button class="btn btn-ghost" onclick="closePotModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePot()">Save</button>
     </div>
   </div>
 </div>
@@ -1264,12 +1408,24 @@ function populateCatSelects() {
   if (fCat._customSelect) { fCat._customSelect._buildOptions(); fCat._customSelect._syncLabel(); }
 }
 
+function populatePayerFilter() {
+  const el = document.getElementById('payer-filter');
+  if (!el) return;
+  const prev = el.value;
+  el.innerHTML = `<option value="">Anyone</option>` +
+    [['a', personA], ['b', personB], ['shared', 'Shared']]
+      .map(([v, l]) => `<option value="${v}">${escAttr(l)}</option>`).join('');
+  if (['', 'a', 'b', 'shared'].includes(prev)) el.value = prev;
+  if (el._customSelect) { el._customSelect._buildOptions(); el._customSelect._syncLabel(); }
+}
+
 function catLabel(id) {
   return loadCats().find(c => c.id === id)?.label || id;
 }
 
 /* ── STATE ─────────────────────────────────────────────── */
 let subs = [];
+let pots = [];
 let editId = null;
 let selColor = COLORS[0];
 let pendingIconUrl = null;
@@ -1277,8 +1433,7 @@ let clearbitTimer = null;
 let logoRejected = false;
 let iconLocked = false;
 let iconSearchTimer = null;
-let isLoggedIn = false;
-let userEmail = '';
+const userEmail = {{ email | tojson }};
 
 const today = new Date();
 let calYear  = today.getFullYear();
@@ -1288,106 +1443,63 @@ let mobileTab = 'cal';
 let currentView = 'calendar';
 
 /* ── STORAGE ────────────────────────────────────────────── */
-const LS_SUBS = 'bf_subs';
-const LS_NEXT_ID = 'bf_next_id';
-
-function lsGet() { return JSON.parse(localStorage.getItem(LS_SUBS) || '[]'); }
-function lsSave(s) { localStorage.setItem(LS_SUBS, JSON.stringify(s)); }
-function lsNextId() {
-  const n = parseInt(localStorage.getItem(LS_NEXT_ID) || '-1');
-  localStorage.setItem(LS_NEXT_ID, String(n - 1));
-  return n;
+async function apiCall(url, opts) {
+  const r = await fetch(url, opts);
+  if (r.status === 403) throw new Error('This is a read-only demo account.');
+  return r;
 }
 
 const storage = {
-  async load() {
-    if (isLoggedIn) return (await fetch('/api/subscriptions')).json();
-    return lsGet();
-  },
-  async create(data) {
-    if (isLoggedIn) {
-      return (await fetch('/api/subscriptions', {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data),
-      })).json();
-    }
-    const sub = { ...data, id: lsNextId() };
-    const all = lsGet(); all.push(sub); lsSave(all);
-    return sub;
-  },
-  async update(id, data) {
-    if (isLoggedIn) {
-      return (await fetch(`/api/subscriptions/${id}`, {
-        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data),
-      })).json();
-    }
-    const all = lsGet();
-    const i = all.findIndex(s => s.id === id);
-    if (i !== -1) { all[i] = { ...all[i], ...data }; lsSave(all); return all[i]; }
-    return data;
-  },
-  async remove(id) {
-    if (isLoggedIn) { await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' }); return; }
-    lsSave(lsGet().filter(s => s.id !== id));
-  },
+  load:   async ()         => (await apiCall('/api/subscriptions')).json(),
+  create: async (data)     => (await apiCall('/api/subscriptions', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})).json(),
+  update: async (id, data) => (await apiCall(`/api/subscriptions/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})).json(),
+  remove: async (id)       => apiCall(`/api/subscriptions/${id}`, {method:'DELETE'}),
+};
+
+const potStore = {
+  load:   async ()         => (await apiCall('/api/pots')).json(),
+  create: async (data)     => (await apiCall('/api/pots', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})).json(),
+  update: async (id, data) => (await apiCall(`/api/pots/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})).json(),
+  remove: async (id)       => apiCall(`/api/pots/${id}`, {method:'DELETE'}),
 };
 
 async function initAuth() {
-  try {
-    const r = await fetch('/api/me');
-    if (r.ok) {
-      isLoggedIn = true;
-      userEmail = (await r.json()).email;
-
-      const sr = await fetch('/api/settings');
-      if (sr.ok) {
-        const saved = await sr.json();
-        if (saved) {
-          if (saved.theme) setTheme(saved.theme);
-          if (saved.currency) setCurrency(saved.currency);
-          if (saved.calDisplay) setCalDisplay(saved.calDisplay);
-          if (saved.categories) { localStorage.setItem(LS_CATS, JSON.stringify(saved.categories)); injectCatStyles(); populateCatSelects(); }
-        } else {
-          syncSettings();
-        }
-      }
-
-      const local = lsGet();
-      if (local.length > 0) {
-        const mr = await fetch('/api/migrate', {
-          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(local),
-        });
-        if (mr.ok) { localStorage.removeItem(LS_SUBS); localStorage.removeItem(LS_NEXT_ID); }
-      }
+  const sr = await fetch('/api/settings');
+  if (sr.ok) {
+    const saved = await sr.json();
+    if (saved) {
+      if (saved.theme) setTheme(saved.theme);
+      if (saved.currency) setCurrency(saved.currency);
+      if (saved.calDisplay) setCalDisplay(saved.calDisplay);
+      if (saved.categories) { localStorage.setItem(LS_CATS, JSON.stringify(saved.categories)); injectCatStyles(); populateCatSelects(); }
+      if (saved.personA) { personA = saved.personA; localStorage.setItem('bf_person_a', personA); }
+      if (saved.personB) { personB = saved.personB; localStorage.setItem('bf_person_b', personB); }
+      if (saved.incomeA != null) { incomeA = saved.incomeA; localStorage.setItem('bf_income_a', incomeA); }
+      if (saved.incomeB != null) { incomeB = saved.incomeB; localStorage.setItem('bf_income_b', incomeB); }
+      populatePayerFilter();
+    } else {
+      syncSettings();
     }
-  } catch (_) { /* network error, stay anonymous */ }
-  updateAuthUI();
-}
+  }
 
-function updateAuthUI() {
-  const signedInHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+  const authHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
     <span style="font-size:.68rem;color:rgba(255,255,255,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${userEmail}">${userEmail}</span>
     <a href="/logout" style="font-size:.68rem;color:rgba(255,255,255,.4);text-decoration:underline;white-space:nowrap;flex-shrink:0">Sign out</a>
   </div>`;
-  const signInHTML = `<a href="/auth/google" style="display:flex;align-items:center;justify-content:center;gap:7px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);font-size:.75rem;text-decoration:none;transition:background .15s"
-    onmouseover="this.style.background='rgba(255,255,255,.14)';this.style.color='#fff'"
-    onmouseout="this.style.background='rgba(255,255,255,.08)';this.style.color='rgba(255,255,255,.7)'">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57C21.36 18.1 22.56 15.3 22.56 12.25z" fill="rgba(255,255,255,.8)"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="rgba(255,255,255,.65)"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="rgba(255,255,255,.55)"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" fill="rgba(255,255,255,.75)"/></svg>
-    Sign in with Google
-  </a>`;
-
   const sidebar = document.getElementById('sidebar-auth');
-  if (sidebar) sidebar.innerHTML = isLoggedIn ? signedInHTML : signInHTML;
-
+  if (sidebar) sidebar.innerHTML = authHTML;
   const mobile = document.getElementById('mobile-auth');
-  if (mobile) mobile.innerHTML = isLoggedIn ? signedInHTML : signInHTML;
+  if (mobile) mobile.innerHTML = authHTML;
 }
 
 async function loadSubs() {
-  subs = await storage.load();
+  [subs, pots] = await Promise.all([storage.load(), potStore.load()]);
   refresh();
 }
 
 /* ── FREQUENCY HELPERS ────────────────────────────────── */
+const FORTNIGHTLY_PER_YEAR = 26;   // every 14 days
+
 function dueMonths(sub) {
   if (sub.freq === 'monthly') return Array.from({length:12},(_,i)=>i);
   if (sub.freq === 'annual')  return [sub.startMonth];
@@ -1397,28 +1509,82 @@ function dueMonths(sub) {
   return [];
 }
 
-function isDueInMonth(sub, month) {
-  return dueMonths(sub).includes(month);
+/* Day-of-month numbers a sub is billed on within a given calendar month.
+   Fixed frequencies land on a single day; fortnightly can land 2-3 times.
+   Fortnightly stepping is done in UTC to stay immune to DST shifts. */
+function occurrencesInMonth(sub, year, month) {
+  if (sub.freq === 'fortnightly') {
+    if (!sub.anchorDate) return [];
+    const [ay, am, ad] = sub.anchorDate.split('-').map(Number);
+    const d = new Date(Date.UTC(ay, am - 1, ad));
+    const firstOfMonth = Date.UTC(year, month, 1);
+    while (d.getTime() > firstOfMonth) d.setUTCDate(d.getUTCDate() - 14);
+    while (d.getUTCFullYear() < year ||
+           (d.getUTCFullYear() === year && d.getUTCMonth() < month)) {
+      d.setUTCDate(d.getUTCDate() + 14);
+    }
+    const days = [];
+    while (d.getUTCFullYear() === year && d.getUTCMonth() === month) {
+      days.push(d.getUTCDate());
+      d.setUTCDate(d.getUTCDate() + 14);
+    }
+    return days;
+  }
+  return dueMonths(sub).includes(month) ? [sub.day] : [];
 }
 
 function monthlyEquiv(sub) {
-  if (sub.freq === 'monthly')   return sub.amount;
-  if (sub.freq === 'quarterly') return sub.amount / 3;
-  if (sub.freq === 'annual')    return sub.amount / 12;
+  if (sub.freq === 'monthly')     return sub.amount;
+  if (sub.freq === 'fortnightly') return sub.amount * FORTNIGHTLY_PER_YEAR / 12;
+  if (sub.freq === 'quarterly')   return sub.amount / 3;
+  if (sub.freq === 'annual')      return sub.amount / 12;
   return sub.amount;
 }
 
 let currency   = localStorage.getItem('bf_currency')    || '£';
 let theme      = localStorage.getItem('bf_theme')       || 'sand';
 let calDisplay = localStorage.getItem('bf_cal_display') || 'text';
+let personA    = localStorage.getItem('bf_person_a')    || 'Me';
+let personB    = localStorage.getItem('bf_person_b')    || 'Partner';
+let incomeA    = parseFloat(localStorage.getItem('bf_income_a')) || 0;
+let incomeB    = parseFloat(localStorage.getItem('bf_income_b')) || 0;
 
 function syncSettings() {
-  if (!isLoggedIn) return;
   fetch('/api/settings', {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ theme, currency, calDisplay, categories: loadCats() }),
+    body: JSON.stringify({
+      theme, currency, calDisplay, categories: loadCats(),
+      personA, personB,
+      incomeA: incomeA || null, incomeB: incomeB || null,
+    }),
   });
+}
+
+function payerLabel(p) {
+  if (p === 'a') return personA;
+  if (p === 'b') return personB;
+  return 'Shared';
+}
+
+/* Fraction of shared costs each person covers, by net-income ratio.
+   Falls back to an even split when incomes aren't both set. */
+function incomeSplit() {
+  const total = incomeA + incomeB;
+  if (total <= 0) return { a: 0.5, b: 0.5 };
+  return { a: incomeA / total, b: incomeB / total };
+}
+
+function setHousehold(field, value) {
+  if (field === 'personA') { personA = value.trim() || 'Me';      localStorage.setItem('bf_person_a', personA); }
+  if (field === 'personB') { personB = value.trim() || 'Partner'; localStorage.setItem('bf_person_b', personB); }
+  if (field === 'incomeA') { incomeA = parseFloat(value) || 0;    localStorage.setItem('bf_income_a', incomeA); }
+  if (field === 'incomeB') { incomeB = parseFloat(value) || 0;    localStorage.setItem('bf_income_b', incomeB); }
+  renderSettingsHousehold();
+  buildPayerControl();
+  populatePayerFilter();
+  renderList();
+  syncSettings();
 }
 
 function setTheme(t) {
@@ -1467,6 +1633,17 @@ function daysUntil(day) {
   let d = new Date(t.getFullYear(), t.getMonth(), day);
   if (d < t) d = new Date(t.getFullYear(), t.getMonth()+1, day);
   return Math.ceil((d - t) / 86400000);
+}
+
+/* Whole days until the next 14-day occurrence of a fortnightly sub. */
+function daysUntilFortnightly(sub) {
+  if (!sub.anchorDate) return null;
+  const [ay, am, ad] = sub.anchorDate.split('-').map(Number);
+  const d = new Date(Date.UTC(ay, am - 1, ad));
+  const now = new Date();
+  const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  while (d.getTime() < todayUTC) d.setUTCDate(d.getUTCDate() + 14);
+  return Math.round((d.getTime() - todayUTC) / 86400000);
 }
 
 /* ── ICON HELPERS ────────────────────────────────────────── */
@@ -1524,7 +1701,7 @@ function tryLoadClearbit(name) {
   const url = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
   const img = new Image();
   img.onload = () => {
-    // Google returns a generic globe icon (size 16x16) when it has nothing — skip it
+    // Google returns a generic globe icon (size 16x16) when it has nothing, so skip it
     if (img.naturalWidth <= 16 && img.naturalHeight <= 16) {
       if (pendingIconUrl && pendingIconUrl.includes('google.com/s2/favicons')) pendingIconUrl = null;
       updateModalIconPreview();
@@ -1572,21 +1749,39 @@ function onNameInput() {
   }, 400);
 }
 
+/* ── POT MATHS ────────────────────────────────────────── */
+const BILL_FREQS = ['monthly', 'fortnightly'];
+
+/* Monthly-equivalent of everything billed less often than monthly: the
+   amount to feed the "annual expenses" pot each month. */
+function annualExpensesPerMonth() {
+  return subs
+    .filter(s => !BILL_FREQS.includes(s.freq))
+    .reduce((a, s) => a + monthlyEquiv(s), 0);
+}
+function customPotsTotal() {
+  return pots.reduce((a, p) => a + p.monthlyAmount, 0);
+}
+/* Monthly-equivalent of the annual-expenses pot, split by payer. */
+function annualExpensesByPayer() {
+  const by = { a: 0, b: 0, shared: 0 };
+  subs.filter(s => !BILL_FREQS.includes(s.freq))
+      .forEach(s => { by[s.payer || 'shared'] += monthlyEquiv(s); });
+  return by;
+}
+
 /* ── SIDEBAR SUMMARY ──────────────────────────────────── */
 function updateSummary() {
-  const monthly = subs.reduce((a,s) => a + monthlyEquiv(s), 0);
-  const annual  = subs.reduce((a,s) => {
-    if (s.freq==='monthly')   return a + s.amount*12;
-    if (s.freq==='quarterly') return a + s.amount*4;
-    if (s.freq==='annual')    return a + s.amount;
-    return a;
-  }, 0);
+  const bills = subs
+    .filter(s => BILL_FREQS.includes(s.freq))
+    .reduce((a, s) => a + monthlyEquiv(s), 0);
+  const setAside = annualExpensesPerMonth() + customPotsTotal();
 
-  document.getElementById('sb-monthly').textContent   = fmt(monthly);
-  document.getElementById('sb-annual').textContent    = fmt(annual);
+  document.getElementById('sb-monthly').textContent   = fmt(bills);
+  document.getElementById('sb-annual').textContent    = fmt(setAside);
   document.getElementById('sb-count').textContent     = `${subs.length} subscription${subs.length!==1?'s':''}`;
-  document.getElementById('mob-monthly').textContent  = fmt(monthly);
-  document.getElementById('mob-annual').textContent   = fmt(annual);
+  document.getElementById('mob-monthly').textContent  = fmt(bills);
+  document.getElementById('mob-annual').textContent   = fmt(setAside);
 }
 
 /* ── CALENDAR ─────────────────────────────────────────── */
@@ -1594,10 +1789,12 @@ function renderCalendar() {
   const label = `${MONTHS[calMonth]} ${calYear}`;
   document.getElementById('cal-title').textContent = label;
 
-  const due = subs.filter(s => isDueInMonth(s, calMonth));
-  const total = due.reduce((a,s)=>a+s.amount,0);
+  const monthHits = subs.flatMap(s =>
+    occurrencesInMonth(s, calYear, calMonth).map(day => ({ sub: s, day }))
+  );
+  const total = monthHits.reduce((a, h) => a + h.sub.amount, 0);
   document.getElementById('mtb-total').textContent = fmt(total);
-  document.getElementById('mtb-count').textContent = `${due.length} payment${due.length!==1?'s':''}`;
+  document.getElementById('mtb-count').textContent = `${monthHits.length} payment${monthHits.length!==1?'s':''}`;
 
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
@@ -1612,8 +1809,8 @@ function renderCalendar() {
   document.getElementById('cal-body').innerHTML = cells.map(cell => {
     const isToday = cell.cur && isCur && cell.day===today.getDate();
     const pills = cell.cur
-      ? subs.filter(s => isDueInMonth(s, calMonth) && s.day===cell.day)
-            .map(s => calDisplay === 'icons' ? calIconPill(s) : `<span class="pill cat-${s.category}" title="${s.name} — ${fmt(s.amount)}">${s.name}</span>`).join('')
+      ? monthHits.filter(h => h.day===cell.day)
+            .map(h => calDisplay === 'icons' ? calIconPill(h.sub) : `<span class="pill cat-${h.sub.category}" title="${h.sub.name}: ${fmt(h.sub.amount)}">${h.sub.name}</span>`).join('')
       : '';
     return `<div class="cal-cell${!cell.cur?' dim':''}${isToday?' today':''}">
       <div class="dnum">${cell.day}</div>${calDisplay === 'icons' ? `<div class="cal-icons-row">${pills}</div>` : pills}</div>`;
@@ -1625,7 +1822,7 @@ function calIconPill(s) {
   const inner = s.icon
     ? `<img src="${s.icon}" alt="${s.name}" style="width:100%;height:100%;object-fit:contain;padding:2px;background:#fff;" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\\'font-size:.5rem\\'>${ini}</span>'">`
     : `<span style="font-size:.5rem">${ini}</span>`;
-  return `<span class="cal-icon-pill" title="${s.name} — ${fmt(s.amount)}" style="background:${s.color}26;color:${s.color}">${inner}</span>`;
+  return `<span class="cal-icon-pill" title="${s.name}: ${fmt(s.amount)}" style="background:${s.color}26;color:${s.color}">${inner}</span>`;
 }
 
 function changeMonth(d) {
@@ -1637,32 +1834,40 @@ function changeMonth(d) {
 
 /* ── LIST ─────────────────────────────────────────────── */
 function renderList() {
-  const q   = document.getElementById('search-q').value.toLowerCase();
-  const cat = document.getElementById('cat-filter').value;
-  const freq_labels = {monthly:'Monthly',quarterly:'Quarterly',annual:'Annual'};
+  const q     = document.getElementById('search-q').value.toLowerCase();
+  const cat   = document.getElementById('cat-filter').value;
+  const payer = document.getElementById('payer-filter').value;
+  const freq_labels = {monthly:'Monthly',fortnightly:'Fortnightly',quarterly:'Quarterly',annual:'Annual'};
 
   const filtered = subs
-    .filter(s => (!q || s.name.toLowerCase().includes(q)) && (!cat || s.category===cat))
+    .filter(s => (!q || s.name.toLowerCase().includes(q))
+              && (!cat || s.category===cat)
+              && (!payer || (s.payer||'shared')===payer))
     .sort((a,b) => a.day - b.day);
 
   document.getElementById('sub-list').innerHTML = filtered.length === 0
     ? `<div style="padding:24px;text-align:center;color:var(--ink-muted);font-size:.85rem;">No subscriptions found.</div>`
     : filtered.map(s => {
-        const du = s.freq==='monthly' ? daysUntil(s.day) : null;
+        const du = s.freq==='monthly' ? daysUntil(s.day)
+                 : s.freq==='fortnightly' ? daysUntilFortnightly(s)
+                 : null;
         const soon = du !== null && du <= 5;
         const dayLabel = s.freq==='monthly'
           ? `${ordinal(s.day)} of month`
+          : s.freq==='fortnightly'
+          ? `every 2 weeks`
           : s.freq==='quarterly'
           ? `${ordinal(s.day)}, every 3 months`
           : `${ordinal(s.day)} of ${MONTHS_SHORT[s.startMonth]}`;
         return `
         <div class="sub-item">
           ${renderIcon(s)}
-          <div>
+          <div style="min-width:0">
             <div class="s-name">${s.name}</div>
             <div class="s-meta">
               <span class="freq-badge">${freq_labels[s.freq]}</span>
               <span>${catLabel(s.category)}</span>
+              ${s.payer === 'a' || s.payer === 'b' ? `<span class="payer-chip">${escAttr(payerLabel(s.payer))}</span>` : ''}
             </div>
           </div>
           <div class="s-right">
@@ -1683,10 +1888,10 @@ function renderList() {
 
 /* ── YEARLY ───────────────────────────────────────────── */
 function monthTotal(month) {
-  return subs.reduce((acc, s) => {
-    if (dueMonths(s).includes(month)) return acc + s.amount;
-    return acc;
-  }, 0);
+  return subs.reduce(
+    (acc, s) => acc + s.amount * occurrencesInMonth(s, yrYear, month).length,
+    0
+  );
 }
 
 function renderYearly() {
@@ -1707,7 +1912,7 @@ function renderYearly() {
   document.getElementById('ys-high').textContent       = fmt(totals[highIdx]||0);
   document.getElementById('ys-high-month').textContent = MONTHS[highIdx];
   document.getElementById('ys-low').textContent        = fmt(minNonZero===Infinity?0:minNonZero);
-  document.getElementById('ys-low-month').textContent  = minNonZero===Infinity ? '—' : MONTHS[lowIdx];
+  document.getElementById('ys-low-month').textContent  = minNonZero===Infinity ? '-' : MONTHS[lowIdx];
 
   document.getElementById('bars').innerHTML = totals.map((t,i) => {
     const pct = Math.round((t/maxT)*100);
@@ -1723,14 +1928,16 @@ function renderYearly() {
 
   document.getElementById('mt-body').innerHTML = totals.map((t,i) => {
     const isCur = i===today.getMonth() && yrYear===today.getFullYear();
-    const dueSubs = subs.filter(s => dueMonths(s).includes(i));
-    const pills = dueSubs.map(s =>
-      `<span class="mt-pill pill cat-${s.category}">${s.name} (${fmt(s.amount)})</span>`
-    ).join('');
+    const pills = subs.map(s => {
+      const n = occurrencesInMonth(s, yrYear, i).length;
+      if (!n) return '';
+      const times = n > 1 ? ` &times;${n}` : '';
+      return `<span class="mt-pill pill cat-${s.category}">${s.name} (${fmt(s.amount)})${times}</span>`;
+    }).join('');
     return `<div class="mt-row${isCur?' current':''}">
       <div class="mt-month">${isCur?'<span class="cur-dot"></span>':''}${MONTHS[i]}</div>
-      <div class="mt-pills">${pills||'<span style="color:var(--ink-faint);font-size:.78rem">—</span>'}</div>
-      <div class="mt-amount${t===0?' zero':''}">${t===0?'—':fmt(t)}</div>
+      <div class="mt-pills">${pills||'<span style="color:var(--ink-faint);font-size:.78rem">-</span>'}</div>
+      <div class="mt-amount${t===0?' zero':''}">${t===0?'-':fmt(t)}</div>
     </div>`;
   }).join('');
 }
@@ -1738,6 +1945,130 @@ function renderYearly() {
 function changeYear(d) {
   yrYear += d;
   renderYearly();
+}
+
+/* ── POTS VIEW ────────────────────────────────────────── */
+function splitLine(amount) {
+  const s = incomeSplit();
+  return `<div class="pot-split">
+    <span>${escAttr(personA)} ${fmt(amount * s.a)}</span>
+    <span>${escAttr(personB)} ${fmt(amount * s.b)}</span>
+  </div>`;
+}
+
+function renderPots() {
+  const annualPot = annualExpensesPerMonth();
+  const byPayer = annualExpensesByPayer();
+  const s = incomeSplit();
+  // Each person's share of the annual pot: their own-tagged bills in full,
+  // plus their income-weighted slice of the shared ones.
+  const annualA = byPayer.a + byPayer.shared * s.a;
+  const annualB = byPayer.b + byPayer.shared * s.b;
+
+  const autoCard = `
+    <div class="pot-card">
+      <div class="pot-card-top">
+        <span class="pot-dot" style="background:#B07E18"></span>
+        <span class="pot-name">Annual expenses</span>
+      </div>
+      <div class="pot-amount">${fmt(annualPot)}<span>/mo</span></div>
+      <div class="pot-note">auto · from your quarterly &amp; annual bills</div>
+      <div class="pot-split">
+        <span>${escAttr(personA)} ${fmt(annualA)}</span>
+        <span>${escAttr(personB)} ${fmt(annualB)}</span>
+      </div>
+    </div>`;
+
+  const potCards = pots.map(p => `
+    <div class="pot-card">
+      <div class="pot-card-top">
+        <span class="pot-dot" style="background:${p.color}"></span>
+        <span class="pot-name">${escAttr(p.name)}</span>
+        <div class="pot-actions">
+          <button class="ibt" onclick="openPotModal(${p.id})" title="Edit">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="ibt del" onclick="delPot(${p.id})" title="Delete">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="pot-amount">${fmt(p.monthlyAmount)}<span>/mo</span></div>
+      ${p.note ? `<div class="pot-note">${escAttr(p.note)}</div>` : ''}
+      ${splitLine(p.monthlyAmount)}
+    </div>`).join('');
+
+  document.getElementById('pot-grid').innerHTML = autoCard + potCards;
+
+  const total = annualPot + customPotsTotal();
+  const totalA = annualA + customPotsTotal() * s.a;
+  const totalB = annualB + customPotsTotal() * s.b;
+  document.getElementById('pots-total').innerHTML = `
+    <div class="pots-total-row"><span>Total to set aside each month</span><strong>${fmt(total)}</strong></div>
+    <div class="pot-split">
+      <span>${escAttr(personA)} ${fmt(totalA)}</span>
+      <span>${escAttr(personB)} ${fmt(totalB)}</span>
+    </div>`;
+}
+
+/* ── POT MODAL ────────────────────────────────────────── */
+let potEditId = null;
+let potColor = COLORS[0];
+
+function buildPotColors() {
+  document.getElementById('p-color-row').innerHTML = COLORS.map(c =>
+    `<div class="swatch${c===potColor?' on':''}" style="background:${c}" onclick="pickPotColor('${c}')"></div>`
+  ).join('');
+}
+function pickPotColor(c) { potColor = c; buildPotColors(); }
+
+function openPotModal(id) {
+  potEditId = id || null;
+  const p = id ? pots.find(x => x.id === id) : null;
+  document.getElementById('pot-modal-title').textContent = id ? 'Edit pot' : 'Add pot';
+  document.getElementById('p-name').value   = p?.name || '';
+  document.getElementById('p-amount').value = p?.monthlyAmount || '';
+  document.getElementById('p-note').value   = p?.note || '';
+  potColor = p?.color || COLORS[0];
+  buildPotColors();
+  document.getElementById('p-amount-label').textContent = `Monthly amount (${currency})`;
+  clearPotError();
+  document.getElementById('pot-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('p-name').focus(), 50);
+}
+function closePotModal() { document.getElementById('pot-backdrop').classList.remove('open'); }
+function closePotBackdrop(e) { if (e.target === e.currentTarget) closePotModal(); }
+function showPotError(m) { const el = document.getElementById('pot-modal-error'); el.textContent = m; el.style.display = 'block'; }
+function clearPotError() { const el = document.getElementById('pot-modal-error'); el.textContent = ''; el.style.display = 'none'; }
+
+async function savePot() {
+  clearPotError();
+  const name = document.getElementById('p-name').value.trim();
+  const monthlyAmount = parseFloat(document.getElementById('p-amount').value);
+  const note = document.getElementById('p-note').value.trim() || null;
+  if (!name || isNaN(monthlyAmount) || monthlyAmount <= 0) {
+    showPotError('Please give the pot a name and a valid monthly amount.');
+    return;
+  }
+  const payload = { name, monthlyAmount, note, color: potColor };
+  try {
+    if (potEditId) await potStore.update(potEditId, payload);
+    else await potStore.create(payload);
+  } catch (e) { showPotError(e.message); return; }
+  closePotModal();
+  await loadSubs();
+}
+
+let _pendingPotDelId = null;
+function delPot(id) {
+  const p = pots.find(x => x.id === id);
+  _pendingPotDelId = id;
+  _pendingDelId = null;
+  document.getElementById('confirm-title').textContent = 'Remove pot?';
+  document.getElementById('confirm-body').textContent =
+    p ? `"${p.name}" will be permanently removed.` : 'This pot will be permanently removed.';
+  document.getElementById('confirm-error').style.display = 'none';
+  document.getElementById('confirm-backdrop').classList.add('open');
 }
 
 /* ── SETTINGS ─────────────────────────────────────────── */
@@ -1754,8 +2085,26 @@ function openSettings() {
   renderSettingsTheme();
   renderSettingsCurrency();
   renderSettingsCalDisplay();
+  renderSettingsHousehold();
   renderSettingsCats();
   document.getElementById('settings-backdrop').classList.add('open');
+}
+
+function renderSettingsHousehold() {
+  const s = incomeSplit();
+  const hint = (incomeA > 0 && incomeB > 0)
+    ? `Shared costs split ${personA} ${Math.round(s.a*100)}% · ${personB} ${Math.round(s.b*100)}%`
+    : 'Add both net monthly incomes to split shared costs by ratio, otherwise 50/50.';
+  document.getElementById('settings-household').innerHTML = `
+    <div class="hh-row">
+      <input class="fi" value="${escAttr(personA)}" onchange="setHousehold('personA',this.value)" placeholder="Person A name">
+      <input class="fi" type="number" min="0" step="0.01" value="${incomeA || ''}" onchange="setHousehold('incomeA',this.value)" placeholder="net income / mo">
+    </div>
+    <div class="hh-row">
+      <input class="fi" value="${escAttr(personB)}" onchange="setHousehold('personB',this.value)" placeholder="Person B name">
+      <input class="fi" type="number" min="0" step="0.01" value="${incomeB || ''}" onchange="setHousehold('incomeB',this.value)" placeholder="net income / mo">
+    </div>
+    <div class="hh-hint">${hint}</div>`;
 }
 
 function closeSettings() {
@@ -1867,12 +2216,27 @@ function pickColor(c) {
   if (!pendingIconUrl) updateModalIconPreview();
 }
 
+let selPayer = 'shared';
+function buildPayerControl() {
+  document.getElementById('f-payer').innerHTML = [['a', personA], ['b', personB], ['shared', 'Shared']]
+    .map(([v, l]) => `<button type="button" class="seg${v===selPayer?' on':''}" onclick="pickPayer('${v}')">${escAttr(l)}</button>`)
+    .join('');
+}
+function pickPayer(v) { selPayer = v; buildPayerControl(); }
+
+function escAttr(s) { return String(s).replace(/[<>"&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;','&':'&amp;'}[c])); }
+
 function onFreqChange() {
   const freq = document.getElementById('f-freq').value;
   const smw  = document.getElementById('start-month-wrap');
   const dw   = document.getElementById('day-wrap');
+  const aw   = document.getElementById('anchor-wrap');
   const lbl  = document.getElementById('start-month-label');
-  if (freq==='annual') {
+  aw.style.display = freq==='fortnightly' ? 'block' : 'none';
+  if (freq==='fortnightly') {
+    smw.style.display='none';
+    dw.style.display='none';
+  } else if (freq==='annual') {
     smw.style.display='block'; lbl.textContent='Billing Month';
     dw.style.display='block';
   } else if (freq==='quarterly') {
@@ -1889,6 +2253,7 @@ function openModal(id) {
   pendingIconUrl = null;
   logoRejected = false;
   iconLocked = false;
+  clearModalError();
 
   const s = id ? subs.find(x=>x.id===id) : null;
   document.getElementById('modal-title').textContent = id ? 'Edit Subscription' : 'Add Subscription';
@@ -1896,6 +2261,7 @@ function openModal(id) {
   document.getElementById('f-amount').value      = s?.amount || '';
   document.getElementById('f-freq').value        = s?.freq || 'monthly';
   document.getElementById('f-day').value         = s?.day || '';
+  document.getElementById('f-anchor').value      = s?.anchorDate || '';
   document.getElementById('f-start-month').value = s?.startMonth || 0;
   document.getElementById('f-cat').value         = s?.category || loadCats()[0]?.id || '';
   ['f-freq','f-start-month','f-cat'].forEach(id => {
@@ -1904,6 +2270,8 @@ function openModal(id) {
   });
   selColor = s?.color || COLORS[0];
   buildColors();
+  selPayer = s?.payer || 'shared';
+  buildPayerControl();
   onFreqChange();
 
   if (s?.icon) {
@@ -1934,63 +2302,121 @@ function closeBackdrop(e) {
 
 function editSub(id) { openModal(id); }
 
-async function delSub(id) {
-  if (!confirm('Remove this subscription?')) return;
-  await storage.remove(id);
+function showModalError(msg) {
+  const el = document.getElementById('modal-error');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function clearModalError() {
+  const el = document.getElementById('modal-error');
+  if (el) { el.textContent = ''; el.style.display = 'none'; }
+}
+
+let _pendingDelId = null;
+
+function delSub(id) {
+  const sub = subs.find(s => s.id === id);
+  _pendingDelId = id;
+  _pendingPotDelId = null;
+  document.getElementById('confirm-title').textContent = 'Remove subscription?';
+  document.getElementById('confirm-body').textContent =
+    sub ? `"${sub.name}" will be permanently removed.` : 'This subscription will be permanently removed.';
+  document.getElementById('confirm-error').style.display = 'none';
+  document.getElementById('confirm-backdrop').classList.add('open');
+}
+
+function closeConfirm() {
+  _pendingDelId = null;
+  _pendingPotDelId = null;
+  document.getElementById('confirm-backdrop').classList.remove('open');
+}
+
+function closeConfirmBackdrop(e) {
+  if (e.target === e.currentTarget) closeConfirm();
+}
+
+async function executeConfirm() {
+  if (_pendingDelId === null && _pendingPotDelId === null) return;
+  try {
+    if (_pendingPotDelId !== null) await potStore.remove(_pendingPotDelId);
+    else await storage.remove(_pendingDelId);
+  } catch (e) {
+    const err = document.getElementById('confirm-error');
+    err.textContent = e.message;
+    err.style.display = 'block';
+    return;
+  }
+  closeConfirm();
   await loadSubs();
 }
 
 async function saveSubscription() {
+  clearModalError();
   const name       = document.getElementById('f-name').value.trim();
   const amount     = parseFloat(document.getElementById('f-amount').value);
   const freq       = document.getElementById('f-freq').value;
   const day        = parseInt(document.getElementById('f-day').value) || 1;
+  const anchorDate = document.getElementById('f-anchor').value || null;
   const startMonth = parseInt(document.getElementById('f-start-month').value);
   const cat        = document.getElementById('f-cat').value;
 
   if (!name || isNaN(amount) || amount <= 0) {
-    alert('Please fill in name and a valid amount.');
+    showModalError('Please fill in name and a valid amount.');
     return;
   }
-  if (day < 1 || day > 28) {
-    alert('Day must be between 1 and 28.');
+  if (freq === 'fortnightly') {
+    if (!anchorDate) {
+      showModalError('Please pick the first payment date.');
+      return;
+    }
+  } else if (day < 1 || day > 28) {
+    showModalError('Day must be between 1 and 28.');
     return;
   }
 
-  const payload = { name, amount, day, freq, startMonth, category: cat, color: selColor, icon: pendingIconUrl || null };
+  const payload = { name, amount, day, freq, startMonth, anchorDate, payer: selPayer, category: cat, color: selColor, icon: pendingIconUrl || null };
 
-  if (editId) {
-    await storage.update(editId, payload);
-  } else {
-    await storage.create(payload);
-  }
+  try {
+    if (editId) {
+      await storage.update(editId, payload);
+    } else {
+      await storage.create(payload);
+    }
+  } catch (e) { showModalError(e.message); return; }
 
   closeModal();
   await loadSubs();
 }
 
 /* ── VIEW SWITCHING ───────────────────────────────────── */
+const VIEW_LABELS = { calendar: 'Calendar & List', yearly: 'Yearly Overview', pots: 'Pots' };
+
 function setView(v) {
   currentView = v;
-  ['calendar','yearly'].forEach(x => {
+  ['calendar','yearly','pots'].forEach(x => {
     document.getElementById('view-'+x).classList.toggle('active', x===v);
     const snav = document.getElementById('snav-'+x);
     if (snav) snav.classList.toggle('active', x===v);
   });
-  document.getElementById('view-label').textContent =
-    v==='calendar' ? 'Calendar & List' : 'Yearly Overview';
+  document.getElementById('view-label').textContent = VIEW_LABELS[v] || 'Calendar & List';
   if (v==='yearly') renderYearly();
+  if (v==='pots') renderPots();
 }
 
 /* mobile tabs */
 function setMobileTab(tab) {
   mobileTab = tab;
-  ['cal','list','yearly'].forEach(t => {
+  ['cal','list','yearly','pots'].forEach(t => {
     document.getElementById('mob-tab-'+t).classList.toggle('active', t===tab);
   });
 
   if (tab==='yearly') {
     setView('yearly');
+    return;
+  }
+  if (tab==='pots') {
+    setView('pots');
     return;
   }
 
@@ -2026,6 +2452,7 @@ function refresh() {
   renderCalendar();
   renderList();
   if (currentView==='yearly') renderYearly();
+  if (currentView==='pots') renderPots();
 }
 
 /* ── CUSTOM SELECT ────────────────────────────────────── */
@@ -2138,6 +2565,7 @@ document.addEventListener('click', () => {
 handleResize();
 injectCatStyles();
 populateCatSelects();
+populatePayerFilter();
 initCustomSelects();
 setTheme(theme);
 document.getElementById('amount-label').textContent = `Amount (${currency})`;
