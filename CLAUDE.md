@@ -17,7 +17,7 @@ Live at [billflow.fazz.uk](https://billflow.fazz.uk).
 
 ```
 app.py              Flask app + REST API + auth routes
-models.py           SQLAlchemy User and Subscription models
+models.py           SQLAlchemy User, Subscription, and Pot models
 templates/
   index.html        Full standalone template (all CSS/JS inline, no base inheritance)
   login.html        Standalone login page (Google SSO + demo)
@@ -60,7 +60,7 @@ Flask does not emit a `Set-Cookie` header on the 302 redirect response from `/au
 Login is required. Unauthenticated requests to `/` redirect to `/login`.
 
 - **Google SSO** — via `/auth/google`. Creates a user row on first sign-in. Full read/write access.
-- **Demo** — via `/auth/demo`. Logs in as `demo@billflow.app`, seeded at startup with 5 sample subscriptions. Write routes return `403` for this account.
+- **Demo** — via `/auth/demo`. Logs in as `demo@billflow.app`, seeded at startup with sample subscriptions (incl. a fortnightly one) and pots. Write routes return `403` for this account.
 
 `/login` redirects to `/` if already authenticated. `/logout` redirects to `/login`.
 
@@ -75,6 +75,10 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 | POST | `/api/subscriptions` | Create subscription (403 for demo) |
 | PUT | `/api/subscriptions/<id>` | Update subscription (403 for demo) |
 | DELETE | `/api/subscriptions/<id>` | Delete subscription (403 for demo) |
+| GET | `/api/pots` | List user's monthly pots |
+| POST | `/api/pots` | Create pot (403 for demo) |
+| PUT | `/api/pots/<id>` | Update pot (403 for demo) |
+| DELETE | `/api/pots/<id>` | Delete pot (403 for demo) |
 
 ### Subscription shape (JSON)
 
@@ -88,28 +92,35 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
   "startMonth": 0,
   "category": "entertainment",
   "color": "#2E5FA3",
-  "icon": null
+  "icon": null,
+  "anchorDate": null,
+  "payer": "shared"
 }
 ```
 
-`freq`: `monthly` | `quarterly` | `annual`  
+`freq`: `monthly` | `fortnightly` | `quarterly` | `annual`  
 `startMonth`: 0–11 (January–December) — used as first billing month for quarterly/annual  
-`icon`: `null` or a Google favicon URL (`https://www.google.com/s2/favicons?domain=...&sz=64`)
+`icon`: `null` or a Google favicon URL (`https://www.google.com/s2/favicons?domain=...&sz=64`)  
+`anchorDate`: `null` except for `fortnightly` — ISO date the 14-day cycle counts from  
+`payer`: `a` | `b` | `shared` — the two people are named in user settings (`personA`/`personB`)
 
 ## Data model
 
-`User` columns: `id`, `email`, `created_at`  
-`Subscription` columns: `id`, `user_id` (FK), `name`, `amount`, `frequency`, `day`, `start_month`, `category`, `color`, `icon`
+`User` columns: `id`, `email`, `created_at`, `settings` (JSON: theme, currency, calDisplay, categories, `personA`, `personB`, `incomeA`, `incomeB`)  
+`Subscription` columns: `id`, `user_id` (FK), `name`, `amount`, `frequency`, `day`, `start_month`, `category`, `color`, `icon`, `anchor_date`, `payer`  
+`Pot` columns: `id`, `user_id` (FK), `name`, `monthly_amount`, `color`, `note`, `created_at` — user-named monthly set-aside targets; no balance tracking. The "annual expenses" pot shown in the UI is computed from quarterly/annual subs, not stored.
 
 ## Frontend behaviour
 
 - Calendar view shows bills due per day, with month total banner
 - List view is searchable/filterable by category; shows days-until for monthly subs
 - Yearly view shows bar chart + monthly breakdown table
+- Pots view shows the computed "annual expenses" pot plus user-created pots, each split between the two people by income ratio (50/50 if incomes unset), with a monthly total
+- Sidebar summary shows "Monthly Bills" (monthly + fortnightly) and "Set Aside / mo" (annual-expenses pot + user pots)
 - Modal auto-fetches logo via Google favicon API with 400ms debounce — falls back to colour initials. × button dismisses the auto-fetched logo for the session.
 - All native `<select>` elements are replaced by a custom JS dropdown (`CustomSelect` class) for consistent cross-browser styling. Sidebar selects get a dark variant automatically.
 - Storage abstraction (`storage.load/create/update/remove`) always calls the API. 403 responses surface as inline errors in the relevant modal rather than browser dialogs.
-- Settings modal (gear icon in sidebar / mobile header) controls theme, currency, and categories.
+- Settings modal (gear icon in sidebar / mobile header) controls theme, currency, calendar labels, the two household names + net monthly incomes, and categories.
 
 ## User preferences (localStorage)
 
@@ -118,6 +129,10 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 | `bf_currency` | `£` | `£` `$` `€` `¥` `₹` `A$` `C$` `Fr` |
 | `bf_theme` | `sand` | `sand` `slate` `midnight` `forest` `rose` |
 | `bf_categories` | see below | JSON array of `{id, label, color}` objects |
+| `bf_person_a` / `bf_person_b` | `Me` / `Partner` | display names for the two people |
+| `bf_income_a` / `bf_income_b` | `0` | net monthly income, drives the pot split |
+
+All settings keys are also synced to `User.settings` server-side and reloaded on sign-in.
 
 ## Categories
 

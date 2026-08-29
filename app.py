@@ -1,9 +1,12 @@
 import os
 import time
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from datetime import date
+
 from authlib.integrations.flask_client import OAuth
-from flask_login import LoginManager, login_user, logout_user, current_user
-from models import db, User, Subscription
+from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask_login import LoginManager, current_user, login_user, logout_user
+
+from models import Pot, Subscription, User, db
 
 app = Flask(__name__)
 
@@ -135,6 +138,13 @@ def list_subs():
     return jsonify([s.to_dict() for s in subs])
 
 
+def _parse_anchor_date(value):
+    """Parse an ISO ``YYYY-MM-DD`` string into a ``date``, or return None."""
+    if not value:
+        return None
+    return date.fromisoformat(value)
+
+
 @app.route("/api/subscriptions", methods=["POST"])
 def create_sub():
     if not current_user.is_authenticated:
@@ -142,16 +152,22 @@ def create_sub():
     if current_user.email == DEMO_EMAIL:
         return jsonify({"error": "demo account is read-only"}), 403
     data = request.get_json(force=True)
+    anchor = _parse_anchor_date(data.get("anchorDate"))
+    # `day` is NOT NULL; for fortnightly the anchor date is the source of truth,
+    # so mirror its day-of-month into `day` to keep the column populated.
+    day = anchor.day if data["freq"] == "fortnightly" and anchor else int(data["day"])
     sub = Subscription(
         user_id=current_user.id,
         name=data["name"],
         amount=float(data["amount"]),
         frequency=data["freq"],
-        day=int(data["day"]),
+        day=day,
         start_month=int(data.get("startMonth", 0)),
         category=data["category"],
         color=data["color"],
         icon=data.get("icon"),
+        anchor_date=anchor,
+        payer=data.get("payer", "shared"),
     )
     db.session.add(sub)
     db.session.commit()
@@ -177,6 +193,12 @@ def update_sub(sub_id):
     sub.color = data.get("color", sub.color)
     if "icon" in data:
         sub.icon = data["icon"]
+    if "payer" in data:
+        sub.payer = data["payer"]
+    if "anchorDate" in data:
+        sub.anchor_date = _parse_anchor_date(data["anchorDate"])
+    if sub.frequency == "fortnightly" and sub.anchor_date:
+        sub.day = sub.anchor_date.day
     db.session.commit()
     return jsonify(sub.to_dict())
 
@@ -191,6 +213,63 @@ def delete_sub(sub_id):
         id=sub_id, user_id=current_user.id
     ).first_or_404()
     db.session.delete(sub)
+    db.session.commit()
+    return "", 204
+
+
+@app.route("/api/pots", methods=["GET"])
+def list_pots():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not authenticated"}), 401
+    pots = Pot.query.filter_by(user_id=current_user.id).order_by(Pot.created_at).all()
+    return jsonify([p.to_dict() for p in pots])
+
+
+@app.route("/api/pots", methods=["POST"])
+def create_pot():
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not authenticated"}), 401
+    if current_user.email == DEMO_EMAIL:
+        return jsonify({"error": "demo account is read-only"}), 403
+    data = request.get_json(force=True)
+    pot = Pot(
+        user_id=current_user.id,
+        name=data["name"],
+        monthly_amount=float(data["monthlyAmount"]),
+        color=data["color"],
+        note=data.get("note"),
+    )
+    db.session.add(pot)
+    db.session.commit()
+    return jsonify(pot.to_dict()), 201
+
+
+@app.route("/api/pots/<int:pot_id>", methods=["PUT"])
+def update_pot(pot_id):
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not authenticated"}), 401
+    if current_user.email == DEMO_EMAIL:
+        return jsonify({"error": "demo account is read-only"}), 403
+    pot = Pot.query.filter_by(id=pot_id, user_id=current_user.id).first_or_404()
+    data = request.get_json(force=True)
+    pot.name = data.get("name", pot.name)
+    if "monthlyAmount" in data:
+        pot.monthly_amount = float(data["monthlyAmount"])
+    pot.color = data.get("color", pot.color)
+    if "note" in data:
+        pot.note = data["note"]
+    db.session.commit()
+    return jsonify(pot.to_dict())
+
+
+@app.route("/api/pots/<int:pot_id>", methods=["DELETE"])
+def delete_pot(pot_id):
+    if not current_user.is_authenticated:
+        return jsonify({"error": "not authenticated"}), 401
+    if current_user.email == DEMO_EMAIL:
+        return jsonify({"error": "demo account is read-only"}), 403
+    pot = Pot.query.filter_by(id=pot_id, user_id=current_user.id).first_or_404()
+    db.session.delete(pot)
     db.session.commit()
     return "", 204
 
@@ -213,6 +292,10 @@ def save_settings():
             "currency": data.get("currency"),
             "calDisplay": data.get("calDisplay"),
             "categories": data.get("categories"),
+            "personA": data.get("personA"),
+            "personB": data.get("personB"),
+            "incomeA": data.get("incomeA"),
+            "incomeB": data.get("incomeB"),
         }
     )
     db.session.commit()
@@ -237,6 +320,7 @@ def seed_demo_user():
                     category="entertainment",
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=netflix.com&sz=64",
+                    payer="a",
                 ),
                 Subscription(
                     user_id=user.id,
@@ -248,6 +332,7 @@ def seed_demo_user():
                     category="entertainment",
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=spotify.com&sz=64",
+                    payer="b",
                 ),
                 Subscription(
                     user_id=user.id,
@@ -281,9 +366,40 @@ def seed_demo_user():
                     category="entertainment",
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=amazon.co.uk&sz=64",
+                    payer="a",
+                ),
+                Subscription(
+                    user_id=user.id,
+                    name="Cleaner",
+                    amount=40.0,
+                    frequency="fortnightly",
+                    day=6,
+                    start_month=0,
+                    category="other",
+                    color="#3A7A58",
+                    icon=None,
+                    anchor_date=date(2026, 1, 6),
                 ),
             ]
             db.session.add_all(demo_subs)
+            db.session.add_all(
+                [
+                    Pot(
+                        user_id=user.id,
+                        name="House & garden",
+                        monthly_amount=150.0,
+                        color="#3A7A58",
+                        note="Doing up the house and garden",
+                    ),
+                    Pot(
+                        user_id=user.id,
+                        name="Car maintenance",
+                        monthly_amount=40.0,
+                        color="#2E5FA3",
+                        note=None,
+                    ),
+                ]
+            )
             db.session.commit()
 
 
