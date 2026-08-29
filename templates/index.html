@@ -401,7 +401,7 @@ body {
   border-radius: var(--r);
   padding: 10px 12px;
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   cursor: default;
@@ -416,12 +416,13 @@ body {
   font-size: .72rem; font-weight: 500;
   flex-shrink: 0;
 }
-.s-name { font-size: .88rem; font-weight: 500; }
-.s-meta { font-size: .72rem; color: var(--ink-muted); margin-top: 1px; display: flex; gap: 6px; align-items: center; }
+.s-name { font-size: .88rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-meta { font-size: .72rem; color: var(--ink-muted); margin-top: 1px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .s-right { text-align: right; }
 .s-amount {
   font-family: 'DM Mono', monospace;
   font-size: .88rem; font-weight: 500;
+  white-space: nowrap;
 }
 .s-day { font-size: .7rem; color: var(--ink-muted); margin-top: 2px; }
 .s-day.soon { color: var(--accent); font-weight: 500; }
@@ -447,6 +448,22 @@ body {
   color: var(--ink-muted); border: 1px solid var(--border-lt);
   text-transform: uppercase; letter-spacing: .04em;
 }
+.payer-chip {
+  font-size: .63rem; padding: 1px 6px; border-radius: 999px;
+  background: var(--bg); color: var(--ink-muted);
+  border: 1px solid var(--border-lt);
+}
+.seg-row { display: flex; gap: 6px; }
+.seg {
+  flex: 1; padding: 8px 4px; font: inherit; font-size: .8rem; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--ink-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.seg.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.hh-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.hh-row .fi:first-child { flex: 1.2; }
+.hh-hint { font-size: .72rem; color: var(--ink-muted); margin-top: 2px; }
 
 /* ══════════════════════════════════════════════════════════
    YEARLY VIEW
@@ -1030,6 +1047,7 @@ body {
           </div>
 
           <select class="cat-filter" id="cat-filter" onchange="renderList()"></select>
+          <select class="cat-filter" id="payer-filter" onchange="renderList()"></select>
 
           <div class="sub-list" id="sub-list"></div>
         </div>
@@ -1115,6 +1133,11 @@ body {
     <div class="settings-section">
       <div class="settings-section-title">Calendar labels</div>
       <div class="settings-row" id="settings-cal-display-grid"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Household</div>
+      <div id="settings-household"></div>
     </div>
 
     <div class="settings-section">
@@ -1206,6 +1229,11 @@ body {
     </div>
 
     <div class="fg">
+      <label class="fl">Who's this for?</label>
+      <div class="seg-row" id="f-payer"></div>
+    </div>
+
+    <div class="fg">
       <label class="fl">Colour</label>
       <div class="color-row" id="color-row"></div>
     </div>
@@ -1284,6 +1312,17 @@ function populateCatSelects() {
   if (fCat._customSelect) { fCat._customSelect._buildOptions(); fCat._customSelect._syncLabel(); }
 }
 
+function populatePayerFilter() {
+  const el = document.getElementById('payer-filter');
+  if (!el) return;
+  const prev = el.value;
+  el.innerHTML = `<option value="">Anyone</option>` +
+    [['a', personA], ['b', personB], ['shared', 'Shared']]
+      .map(([v, l]) => `<option value="${v}">${escAttr(l)}</option>`).join('');
+  if (['', 'a', 'b', 'shared'].includes(prev)) el.value = prev;
+  if (el._customSelect) { el._customSelect._buildOptions(); el._customSelect._syncLabel(); }
+}
+
 function catLabel(id) {
   return loadCats().find(c => c.id === id)?.label || id;
 }
@@ -1329,6 +1368,11 @@ async function initAuth() {
       if (saved.currency) setCurrency(saved.currency);
       if (saved.calDisplay) setCalDisplay(saved.calDisplay);
       if (saved.categories) { localStorage.setItem(LS_CATS, JSON.stringify(saved.categories)); injectCatStyles(); populateCatSelects(); }
+      if (saved.personA) { personA = saved.personA; localStorage.setItem('bf_person_a', personA); }
+      if (saved.personB) { personB = saved.personB; localStorage.setItem('bf_person_b', personB); }
+      if (saved.incomeA != null) { incomeA = saved.incomeA; localStorage.setItem('bf_income_a', incomeA); }
+      if (saved.incomeB != null) { incomeB = saved.incomeB; localStorage.setItem('bf_income_b', incomeB); }
+      populatePayerFilter();
     } else {
       syncSettings();
     }
@@ -1396,13 +1440,47 @@ function monthlyEquiv(sub) {
 let currency   = localStorage.getItem('bf_currency')    || '£';
 let theme      = localStorage.getItem('bf_theme')       || 'sand';
 let calDisplay = localStorage.getItem('bf_cal_display') || 'text';
+let personA    = localStorage.getItem('bf_person_a')    || 'Me';
+let personB    = localStorage.getItem('bf_person_b')    || 'Partner';
+let incomeA    = parseFloat(localStorage.getItem('bf_income_a')) || 0;
+let incomeB    = parseFloat(localStorage.getItem('bf_income_b')) || 0;
 
 function syncSettings() {
   fetch('/api/settings', {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ theme, currency, calDisplay, categories: loadCats() }),
+    body: JSON.stringify({
+      theme, currency, calDisplay, categories: loadCats(),
+      personA, personB,
+      incomeA: incomeA || null, incomeB: incomeB || null,
+    }),
   });
+}
+
+function payerLabel(p) {
+  if (p === 'a') return personA;
+  if (p === 'b') return personB;
+  return 'Shared';
+}
+
+/* Fraction of shared costs each person covers, by net-income ratio.
+   Falls back to an even split when incomes aren't both set. */
+function incomeSplit() {
+  const total = incomeA + incomeB;
+  if (total <= 0) return { a: 0.5, b: 0.5 };
+  return { a: incomeA / total, b: incomeB / total };
+}
+
+function setHousehold(field, value) {
+  if (field === 'personA') { personA = value.trim() || 'Me';      localStorage.setItem('bf_person_a', personA); }
+  if (field === 'personB') { personB = value.trim() || 'Partner'; localStorage.setItem('bf_person_b', personB); }
+  if (field === 'incomeA') { incomeA = parseFloat(value) || 0;    localStorage.setItem('bf_income_a', incomeA); }
+  if (field === 'incomeB') { incomeB = parseFloat(value) || 0;    localStorage.setItem('bf_income_b', incomeB); }
+  renderSettingsHousehold();
+  buildPayerControl();
+  populatePayerFilter();
+  renderList();
+  syncSettings();
 }
 
 function setTheme(t) {
@@ -1635,12 +1713,15 @@ function changeMonth(d) {
 
 /* ── LIST ─────────────────────────────────────────────── */
 function renderList() {
-  const q   = document.getElementById('search-q').value.toLowerCase();
-  const cat = document.getElementById('cat-filter').value;
+  const q     = document.getElementById('search-q').value.toLowerCase();
+  const cat   = document.getElementById('cat-filter').value;
+  const payer = document.getElementById('payer-filter').value;
   const freq_labels = {monthly:'Monthly',fortnightly:'Fortnightly',quarterly:'Quarterly',annual:'Annual'};
 
   const filtered = subs
-    .filter(s => (!q || s.name.toLowerCase().includes(q)) && (!cat || s.category===cat))
+    .filter(s => (!q || s.name.toLowerCase().includes(q))
+              && (!cat || s.category===cat)
+              && (!payer || (s.payer||'shared')===payer))
     .sort((a,b) => a.day - b.day);
 
   document.getElementById('sub-list').innerHTML = filtered.length === 0
@@ -1650,24 +1731,22 @@ function renderList() {
                  : s.freq==='fortnightly' ? daysUntilFortnightly(s)
                  : null;
         const soon = du !== null && du <= 5;
-        const anchorLabel = s.anchorDate
-          ? `${ordinal(+s.anchorDate.slice(8,10))} ${MONTHS_SHORT[+s.anchorDate.slice(5,7)-1]}`
-          : '';
         const dayLabel = s.freq==='monthly'
           ? `${ordinal(s.day)} of month`
           : s.freq==='fortnightly'
-          ? `every 2 weeks from ${anchorLabel}`
+          ? `every 2 weeks`
           : s.freq==='quarterly'
           ? `${ordinal(s.day)}, every 3 months`
           : `${ordinal(s.day)} of ${MONTHS_SHORT[s.startMonth]}`;
         return `
         <div class="sub-item">
           ${renderIcon(s)}
-          <div>
+          <div style="min-width:0">
             <div class="s-name">${s.name}</div>
             <div class="s-meta">
               <span class="freq-badge">${freq_labels[s.freq]}</span>
               <span>${catLabel(s.category)}</span>
+              ${s.payer === 'a' || s.payer === 'b' ? `<span class="payer-chip">${escAttr(payerLabel(s.payer))}</span>` : ''}
             </div>
           </div>
           <div class="s-right">
@@ -1761,8 +1840,26 @@ function openSettings() {
   renderSettingsTheme();
   renderSettingsCurrency();
   renderSettingsCalDisplay();
+  renderSettingsHousehold();
   renderSettingsCats();
   document.getElementById('settings-backdrop').classList.add('open');
+}
+
+function renderSettingsHousehold() {
+  const s = incomeSplit();
+  const hint = (incomeA > 0 && incomeB > 0)
+    ? `Shared costs split ${personA} ${Math.round(s.a*100)}% · ${personB} ${Math.round(s.b*100)}%`
+    : 'Add both net monthly incomes to split shared costs by ratio — otherwise 50/50.';
+  document.getElementById('settings-household').innerHTML = `
+    <div class="hh-row">
+      <input class="fi" value="${escAttr(personA)}" onchange="setHousehold('personA',this.value)" placeholder="Person A name">
+      <input class="fi" type="number" min="0" step="0.01" value="${incomeA || ''}" onchange="setHousehold('incomeA',this.value)" placeholder="net income / mo">
+    </div>
+    <div class="hh-row">
+      <input class="fi" value="${escAttr(personB)}" onchange="setHousehold('personB',this.value)" placeholder="Person B name">
+      <input class="fi" type="number" min="0" step="0.01" value="${incomeB || ''}" onchange="setHousehold('incomeB',this.value)" placeholder="net income / mo">
+    </div>
+    <div class="hh-hint">${hint}</div>`;
 }
 
 function closeSettings() {
@@ -1874,6 +1971,16 @@ function pickColor(c) {
   if (!pendingIconUrl) updateModalIconPreview();
 }
 
+let selPayer = 'shared';
+function buildPayerControl() {
+  document.getElementById('f-payer').innerHTML = [['a', personA], ['b', personB], ['shared', 'Shared']]
+    .map(([v, l]) => `<button type="button" class="seg${v===selPayer?' on':''}" onclick="pickPayer('${v}')">${escAttr(l)}</button>`)
+    .join('');
+}
+function pickPayer(v) { selPayer = v; buildPayerControl(); }
+
+function escAttr(s) { return String(s).replace(/[<>"&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;','&':'&amp;'}[c])); }
+
 function onFreqChange() {
   const freq = document.getElementById('f-freq').value;
   const smw  = document.getElementById('start-month-wrap');
@@ -1918,6 +2025,8 @@ function openModal(id) {
   });
   selColor = s?.color || COLORS[0];
   buildColors();
+  selPayer = s?.payer || 'shared';
+  buildPayerControl();
   onFreqChange();
 
   if (s?.icon) {
@@ -2017,7 +2126,7 @@ async function saveSubscription() {
     return;
   }
 
-  const payload = { name, amount, day, freq, startMonth, anchorDate, category: cat, color: selColor, icon: pendingIconUrl || null };
+  const payload = { name, amount, day, freq, startMonth, anchorDate, payer: selPayer, category: cat, color: selColor, icon: pendingIconUrl || null };
 
   try {
     if (editId) {
@@ -2200,6 +2309,7 @@ document.addEventListener('click', () => {
 handleResize();
 injectCatStyles();
 populateCatSelects();
+populatePayerFilter();
 initCustomSelects();
 setTheme(theme);
 document.getElementById('amount-label').textContent = `Amount (${currency})`;

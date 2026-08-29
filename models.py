@@ -38,6 +38,9 @@ class Subscription(db.Model):
     # 14-day billing cycles are counted forward and backward. Null for the
     # fixed monthly/quarterly/annual frequencies, which use day/start_month.
     anchor_date = db.Column(db.Date, nullable=True)
+    # Who the expense belongs to: "a" / "b" (the two people named in user
+    # settings) or "shared". Drives the list filter and the pot split.
+    payer = db.Column(db.String(20), nullable=False, server_default="shared")
 
     def to_dict(self):
         return {
@@ -51,4 +54,5 @@ class Subscription(db.Model):
             "color": self.color,
             "icon": self.icon,
             "anchorDate": self.anchor_date.isoformat() if self.anchor_date else None,
+            "payer": self.payer,
         }

@@ -167,6 +167,7 @@ def create_sub():
         color=data["color"],
         icon=data.get("icon"),
         anchor_date=anchor,
+        payer=data.get("payer", "shared"),
     )
     db.session.add(sub)
     db.session.commit()
@@ -192,6 +193,8 @@ def update_sub(sub_id):
     sub.color = data.get("color", sub.color)
     if "icon" in data:
         sub.icon = data["icon"]
+    if "payer" in data:
+        sub.payer = data["payer"]
     if "anchorDate" in data:
         sub.anchor_date = _parse_anchor_date(data["anchorDate"])
     if sub.frequency == "fortnightly" and sub.anchor_date:
@@ -232,6 +235,10 @@ def save_settings():
             "currency": data.get("currency"),
             "calDisplay": data.get("calDisplay"),
             "categories": data.get("categories"),
+            "personA": data.get("personA"),
+            "personB": data.get("personB"),
+            "incomeA": data.get("incomeA"),
+            "incomeB": data.get("incomeB"),
         }
     )
     db.session.commit()
@@ -256,6 +263,7 @@ def seed_demo_user():
                     category="entertainment",
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=netflix.com&sz=64",
+                    payer="a",
                 ),
                 Subscription(
                     user_id=user.id,
@@ -267,6 +275,7 @@ def seed_demo_user():
                     category="entertainment",
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=spotify.com&sz=64",
+                    payer="b",
                 ),
                 Subscription(
                     user_id=user.id,
@@ -300,6 +309,7 @@ def seed_demo_user():
                     category="entertainment",
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=amazon.co.uk&sz=64",
+                    payer="a",
                 ),
                 Subscription(
                     user_id=user.id,
