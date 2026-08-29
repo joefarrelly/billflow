@@ -1,7 +1,8 @@
 import json
 from datetime import datetime, timezone
-from flask_sqlalchemy import SQLAlchemy
+
 from flask_login import UserMixin
+from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
@@ -33,6 +34,10 @@ class Subscription(db.Model):
     category = db.Column(db.String(50), nullable=False)
     color = db.Column(db.String(20), nullable=False)
     icon = db.Column(db.String(500), nullable=True)
+    # Set only when frequency == "fortnightly": the reference date from which
+    # 14-day billing cycles are counted forward and backward. Null for the
+    # fixed monthly/quarterly/annual frequencies, which use day/start_month.
+    anchor_date = db.Column(db.Date, nullable=True)
 
     def to_dict(self):
         return {
@@ -45,4 +50,5 @@ class Subscription(db.Model):
             "category": self.category,
             "color": self.color,
             "icon": self.icon,
+            "anchorDate": self.anchor_date.isoformat() if self.anchor_date else None,
         }

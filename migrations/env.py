@@ -10,8 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 config = context.config
 fileConfig(config.config_file_name)
 
-from models import db  # noqa: E402
-import models  # noqa: F401, E402 — registers all models with db.metadata
+import models  # registers all models with db.metadata
+from models import db
 
 target_metadata = db.metadata
 

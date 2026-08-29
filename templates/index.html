@@ -1170,6 +1170,7 @@ body {
         <label class="fl">Frequency</label>
         <select class="fs" id="f-freq" onchange="onFreqChange()">
           <option value="monthly">Monthly</option>
+          <option value="fortnightly">Fortnightly</option>
           <option value="quarterly">Quarterly</option>
           <option value="annual">Annual</option>
         </select>
@@ -1181,6 +1182,10 @@ body {
       <div class="fg day-field-wrap" id="day-wrap">
         <label class="fl">Day of Month</label>
         <input type="number" class="fi" id="f-day" placeholder="1–28" min="1" max="28">
+      </div>
+      <div class="fg" id="anchor-wrap" style="display:none">
+        <label class="fl">First payment date</label>
+        <input type="date" class="fi" id="f-anchor">
       </div>
       <div class="fg" id="start-month-wrap">
         <label class="fl" id="start-month-label">Starting Month</label>
@@ -1345,6 +1350,8 @@ async function loadSubs() {
 }
 
 /* ── FREQUENCY HELPERS ────────────────────────────────── */
+const FORTNIGHTLY_PER_YEAR = 26;   // every 14 days
+
 function dueMonths(sub) {
   if (sub.freq === 'monthly') return Array.from({length:12},(_,i)=>i);
   if (sub.freq === 'annual')  return [sub.startMonth];
@@ -1354,14 +1361,35 @@ function dueMonths(sub) {
   return [];
 }
 
-function isDueInMonth(sub, month) {
-  return dueMonths(sub).includes(month);
+/* Day-of-month numbers a sub is billed on within a given calendar month.
+   Fixed frequencies land on a single day; fortnightly can land 2–3 times.
+   Fortnightly stepping is done in UTC to stay immune to DST shifts. */
+function occurrencesInMonth(sub, year, month) {
+  if (sub.freq === 'fortnightly') {
+    if (!sub.anchorDate) return [];
+    const [ay, am, ad] = sub.anchorDate.split('-').map(Number);
+    const d = new Date(Date.UTC(ay, am - 1, ad));
+    const firstOfMonth = Date.UTC(year, month, 1);
+    while (d.getTime() > firstOfMonth) d.setUTCDate(d.getUTCDate() - 14);
+    while (d.getUTCFullYear() < year ||
+           (d.getUTCFullYear() === year && d.getUTCMonth() < month)) {
+      d.setUTCDate(d.getUTCDate() + 14);
+    }
+    const days = [];
+    while (d.getUTCFullYear() === year && d.getUTCMonth() === month) {
+      days.push(d.getUTCDate());
+      d.setUTCDate(d.getUTCDate() + 14);
+    }
+    return days;
+  }
+  return dueMonths(sub).includes(month) ? [sub.day] : [];
 }
 
 function monthlyEquiv(sub) {
-  if (sub.freq === 'monthly')   return sub.amount;
-  if (sub.freq === 'quarterly') return sub.amount / 3;
-  if (sub.freq === 'annual')    return sub.amount / 12;
+  if (sub.freq === 'monthly')     return sub.amount;
+  if (sub.freq === 'fortnightly') return sub.amount * FORTNIGHTLY_PER_YEAR / 12;
+  if (sub.freq === 'quarterly')   return sub.amount / 3;
+  if (sub.freq === 'annual')      return sub.amount / 12;
   return sub.amount;
 }
 
@@ -1423,6 +1451,17 @@ function daysUntil(day) {
   let d = new Date(t.getFullYear(), t.getMonth(), day);
   if (d < t) d = new Date(t.getFullYear(), t.getMonth()+1, day);
   return Math.ceil((d - t) / 86400000);
+}
+
+/* Whole days until the next 14-day occurrence of a fortnightly sub. */
+function daysUntilFortnightly(sub) {
+  if (!sub.anchorDate) return null;
+  const [ay, am, ad] = sub.anchorDate.split('-').map(Number);
+  const d = new Date(Date.UTC(ay, am - 1, ad));
+  const now = new Date();
+  const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  while (d.getTime() < todayUTC) d.setUTCDate(d.getUTCDate() + 14);
+  return Math.round((d.getTime() - todayUTC) / 86400000);
 }
 
 /* ── ICON HELPERS ────────────────────────────────────────── */
@@ -1532,9 +1571,10 @@ function onNameInput() {
 function updateSummary() {
   const monthly = subs.reduce((a,s) => a + monthlyEquiv(s), 0);
   const annual  = subs.reduce((a,s) => {
-    if (s.freq==='monthly')   return a + s.amount*12;
-    if (s.freq==='quarterly') return a + s.amount*4;
-    if (s.freq==='annual')    return a + s.amount;
+    if (s.freq==='monthly')     return a + s.amount*12;
+    if (s.freq==='fortnightly') return a + s.amount*FORTNIGHTLY_PER_YEAR;
+    if (s.freq==='quarterly')   return a + s.amount*4;
+    if (s.freq==='annual')      return a + s.amount;
     return a;
   }, 0);
 
@@ -1550,10 +1590,12 @@ function renderCalendar() {
   const label = `${MONTHS[calMonth]} ${calYear}`;
   document.getElementById('cal-title').textContent = label;
 
-  const due = subs.filter(s => isDueInMonth(s, calMonth));
-  const total = due.reduce((a,s)=>a+s.amount,0);
+  const monthHits = subs.flatMap(s =>
+    occurrencesInMonth(s, calYear, calMonth).map(day => ({ sub: s, day }))
+  );
+  const total = monthHits.reduce((a, h) => a + h.sub.amount, 0);
   document.getElementById('mtb-total').textContent = fmt(total);
-  document.getElementById('mtb-count').textContent = `${due.length} payment${due.length!==1?'s':''}`;
+  document.getElementById('mtb-count').textContent = `${monthHits.length} payment${monthHits.length!==1?'s':''}`;
 
   const firstDay = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
@@ -1568,8 +1610,8 @@ function renderCalendar() {
   document.getElementById('cal-body').innerHTML = cells.map(cell => {
     const isToday = cell.cur && isCur && cell.day===today.getDate();
     const pills = cell.cur
-      ? subs.filter(s => isDueInMonth(s, calMonth) && s.day===cell.day)
-            .map(s => calDisplay === 'icons' ? calIconPill(s) : `<span class="pill cat-${s.category}" title="${s.name} — ${fmt(s.amount)}">${s.name}</span>`).join('')
+      ? monthHits.filter(h => h.day===cell.day)
+            .map(h => calDisplay === 'icons' ? calIconPill(h.sub) : `<span class="pill cat-${h.sub.category}" title="${h.sub.name} — ${fmt(h.sub.amount)}">${h.sub.name}</span>`).join('')
       : '';
     return `<div class="cal-cell${!cell.cur?' dim':''}${isToday?' today':''}">
       <div class="dnum">${cell.day}</div>${calDisplay === 'icons' ? `<div class="cal-icons-row">${pills}</div>` : pills}</div>`;
@@ -1595,7 +1637,7 @@ function changeMonth(d) {
 function renderList() {
   const q   = document.getElementById('search-q').value.toLowerCase();
   const cat = document.getElementById('cat-filter').value;
-  const freq_labels = {monthly:'Monthly',quarterly:'Quarterly',annual:'Annual'};
+  const freq_labels = {monthly:'Monthly',fortnightly:'Fortnightly',quarterly:'Quarterly',annual:'Annual'};
 
   const filtered = subs
     .filter(s => (!q || s.name.toLowerCase().includes(q)) && (!cat || s.category===cat))
@@ -1604,10 +1646,17 @@ function renderList() {
   document.getElementById('sub-list').innerHTML = filtered.length === 0
     ? `<div style="padding:24px;text-align:center;color:var(--ink-muted);font-size:.85rem;">No subscriptions found.</div>`
     : filtered.map(s => {
-        const du = s.freq==='monthly' ? daysUntil(s.day) : null;
+        const du = s.freq==='monthly' ? daysUntil(s.day)
+                 : s.freq==='fortnightly' ? daysUntilFortnightly(s)
+                 : null;
         const soon = du !== null && du <= 5;
+        const anchorLabel = s.anchorDate
+          ? `${ordinal(+s.anchorDate.slice(8,10))} ${MONTHS_SHORT[+s.anchorDate.slice(5,7)-1]}`
+          : '';
         const dayLabel = s.freq==='monthly'
           ? `${ordinal(s.day)} of month`
+          : s.freq==='fortnightly'
+          ? `every 2 weeks from ${anchorLabel}`
           : s.freq==='quarterly'
           ? `${ordinal(s.day)}, every 3 months`
           : `${ordinal(s.day)} of ${MONTHS_SHORT[s.startMonth]}`;
@@ -1639,10 +1688,10 @@ function renderList() {
 
 /* ── YEARLY ───────────────────────────────────────────── */
 function monthTotal(month) {
-  return subs.reduce((acc, s) => {
-    if (dueMonths(s).includes(month)) return acc + s.amount;
-    return acc;
-  }, 0);
+  return subs.reduce(
+    (acc, s) => acc + s.amount * occurrencesInMonth(s, yrYear, month).length,
+    0
+  );
 }
 
 function renderYearly() {
@@ -1679,10 +1728,12 @@ function renderYearly() {
 
   document.getElementById('mt-body').innerHTML = totals.map((t,i) => {
     const isCur = i===today.getMonth() && yrYear===today.getFullYear();
-    const dueSubs = subs.filter(s => dueMonths(s).includes(i));
-    const pills = dueSubs.map(s =>
-      `<span class="mt-pill pill cat-${s.category}">${s.name} (${fmt(s.amount)})</span>`
-    ).join('');
+    const pills = subs.map(s => {
+      const n = occurrencesInMonth(s, yrYear, i).length;
+      if (!n) return '';
+      const times = n > 1 ? ` &times;${n}` : '';
+      return `<span class="mt-pill pill cat-${s.category}">${s.name} (${fmt(s.amount)})${times}</span>`;
+    }).join('');
     return `<div class="mt-row${isCur?' current':''}">
       <div class="mt-month">${isCur?'<span class="cur-dot"></span>':''}${MONTHS[i]}</div>
       <div class="mt-pills">${pills||'<span style="color:var(--ink-faint);font-size:.78rem">—</span>'}</div>
@@ -1827,8 +1878,13 @@ function onFreqChange() {
   const freq = document.getElementById('f-freq').value;
   const smw  = document.getElementById('start-month-wrap');
   const dw   = document.getElementById('day-wrap');
+  const aw   = document.getElementById('anchor-wrap');
   const lbl  = document.getElementById('start-month-label');
-  if (freq==='annual') {
+  aw.style.display = freq==='fortnightly' ? 'block' : 'none';
+  if (freq==='fortnightly') {
+    smw.style.display='none';
+    dw.style.display='none';
+  } else if (freq==='annual') {
     smw.style.display='block'; lbl.textContent='Billing Month';
     dw.style.display='block';
   } else if (freq==='quarterly') {
@@ -1853,6 +1909,7 @@ function openModal(id) {
   document.getElementById('f-amount').value      = s?.amount || '';
   document.getElementById('f-freq').value        = s?.freq || 'monthly';
   document.getElementById('f-day').value         = s?.day || '';
+  document.getElementById('f-anchor').value      = s?.anchorDate || '';
   document.getElementById('f-start-month').value = s?.startMonth || 0;
   document.getElementById('f-cat').value         = s?.category || loadCats()[0]?.id || '';
   ['f-freq','f-start-month','f-cat'].forEach(id => {
@@ -1942,6 +1999,7 @@ async function saveSubscription() {
   const amount     = parseFloat(document.getElementById('f-amount').value);
   const freq       = document.getElementById('f-freq').value;
   const day        = parseInt(document.getElementById('f-day').value) || 1;
+  const anchorDate = document.getElementById('f-anchor').value || null;
   const startMonth = parseInt(document.getElementById('f-start-month').value);
   const cat        = document.getElementById('f-cat').value;
 
@@ -1949,12 +2007,17 @@ async function saveSubscription() {
     showModalError('Please fill in name and a valid amount.');
     return;
   }
-  if (day < 1 || day > 28) {
+  if (freq === 'fortnightly') {
+    if (!anchorDate) {
+      showModalError('Please pick the first payment date.');
+      return;
+    }
+  } else if (day < 1 || day > 28) {
     showModalError('Day must be between 1 and 28.');
     return;
   }
 
-  const payload = { name, amount, day, freq, startMonth, category: cat, color: selColor, icon: pendingIconUrl || null };
+  const payload = { name, amount, day, freq, startMonth, anchorDate, category: cat, color: selColor, icon: pendingIconUrl || null };
 
   try {
     if (editId) {

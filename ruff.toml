@@ -1,0 +1,5 @@
+[lint.per-file-ignores]
+# Alembic's env.py must set sys.path before importing the app's models, so the
+# model imports are deliberately not at the top of the file, and `import models`
+# is a side-effecting import that registers tables on db.metadata.
+"migrations/env.py" = ["E402", "F401"]

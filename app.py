@@ -1,9 +1,12 @@
 import os
 import time
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from datetime import date
+
 from authlib.integrations.flask_client import OAuth
-from flask_login import LoginManager, login_user, logout_user, current_user
-from models import db, User, Subscription
+from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask_login import LoginManager, current_user, login_user, logout_user
+
+from models import Subscription, User, db
 
 app = Flask(__name__)
 
@@ -135,6 +138,13 @@ def list_subs():
     return jsonify([s.to_dict() for s in subs])
 
 
+def _parse_anchor_date(value):
+    """Parse an ISO ``YYYY-MM-DD`` string into a ``date``, or return None."""
+    if not value:
+        return None
+    return date.fromisoformat(value)
+
+
 @app.route("/api/subscriptions", methods=["POST"])
 def create_sub():
     if not current_user.is_authenticated:
@@ -142,16 +152,21 @@ def create_sub():
     if current_user.email == DEMO_EMAIL:
         return jsonify({"error": "demo account is read-only"}), 403
     data = request.get_json(force=True)
+    anchor = _parse_anchor_date(data.get("anchorDate"))
+    # `day` is NOT NULL; for fortnightly the anchor date is the source of truth,
+    # so mirror its day-of-month into `day` to keep the column populated.
+    day = anchor.day if data["freq"] == "fortnightly" and anchor else int(data["day"])
     sub = Subscription(
         user_id=current_user.id,
         name=data["name"],
         amount=float(data["amount"]),
         frequency=data["freq"],
-        day=int(data["day"]),
+        day=day,
         start_month=int(data.get("startMonth", 0)),
         category=data["category"],
         color=data["color"],
         icon=data.get("icon"),
+        anchor_date=anchor,
     )
     db.session.add(sub)
     db.session.commit()
@@ -177,6 +192,10 @@ def update_sub(sub_id):
     sub.color = data.get("color", sub.color)
     if "icon" in data:
         sub.icon = data["icon"]
+    if "anchorDate" in data:
+        sub.anchor_date = _parse_anchor_date(data["anchorDate"])
+    if sub.frequency == "fortnightly" and sub.anchor_date:
+        sub.day = sub.anchor_date.day
     db.session.commit()
     return jsonify(sub.to_dict())
 
@@ -281,6 +300,18 @@ def seed_demo_user():
                     category="entertainment",
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=amazon.co.uk&sz=64",
+                ),
+                Subscription(
+                    user_id=user.id,
+                    name="Cleaner",
+                    amount=40.0,
+                    frequency="fortnightly",
+                    day=6,
+                    start_month=0,
+                    category="other",
+                    color="#3A7A58",
+                    icon=None,
+                    anchor_date=date(2026, 1, 6),
                 ),
             ]
             db.session.add_all(demo_subs)
