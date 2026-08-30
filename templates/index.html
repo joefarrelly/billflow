@@ -945,19 +945,32 @@ body {
     grid-template-columns: 1fr;
   }
 
-  /* on mobile, cal and list panels are toggled via tabs */
+  /* on mobile, cal and list panels are toggled via tabs.
+     These panels set overflow-y:auto, which forces computed overflow-x to
+     auto too - so any few-px-wide child (the cal-grid border, the cal-nav's
+     170px title min-width) gives the panel its own horizontal scroll that
+     html/body overflow-x:hidden can't catch. Pin overflow-x and trim the
+     32px side padding that was eating the margin on a ~360px viewport. */
   .list-panel {
     background: var(--bg);
     border-right: none;
+    padding: 20px 16px;
+    overflow-x: hidden;
   }
-  .cal-panel { border-right: none; }
+  .cal-panel {
+    border-right: none;
+    padding: 20px 16px;
+    overflow-x: hidden;
+  }
+  .cal-title { min-width: 0; }
+  .pots-panel { padding: 20px 16px; overflow-x: hidden; }
 
   .yearly-summary { grid-template-columns: 1fr 1fr; }
   .bars { gap: 4px; height: 100px; }
   .bar-amount { display: none; }
   .mt-head, .mt-row { grid-template-columns: 100px 1fr 90px; }
 
-  .yearly-panel { padding: 16px; }
+  .yearly-panel { padding: 16px; overflow-x: hidden; }
 }
 
 /* hide mobile elements on desktop */
