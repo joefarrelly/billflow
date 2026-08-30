@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Billflow</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231a1714'/><text x='16' y='23' font-family='serif' font-size='20' font-weight='700' text-anchor='middle' fill='%23e8d5b0'>B</text></svg>">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap" rel="stylesheet">
 <style>
 /* ── RESET & TOKENS ───────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -181,7 +181,8 @@ body {
   margin-bottom: 3px;
 }
 .sum-card .val {
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 1.4rem;
   font-weight: 600;
 }
@@ -299,7 +300,8 @@ body {
 }
 .month-total-bar .mtb-label { font-size: .8rem; color: var(--ink-muted); }
 .month-total-bar .mtb-total {
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 1.3rem; font-weight: 600; color: var(--accent);
 }
 .month-total-bar .mtb-count { font-size: .75rem; color: var(--ink-muted); font-style: italic; }
@@ -496,7 +498,7 @@ body {
   box-shadow: var(--sh);
 }
 .ys-card .ys-lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-muted); margin-bottom: 4px; }
-.ys-card .ys-val { font-family: 'Playfair Display', serif; font-size: 1.45rem; font-weight: 600; }
+.ys-card .ys-val { font-family: 'DM Sans', sans-serif; font-variant-numeric: tabular-nums; font-size: 1.45rem; font-weight: 600; }
 .ys-card .ys-sub { font-size: .72rem; color: var(--ink-muted); margin-top: 2px; }
 
 /* bar chart */
@@ -581,7 +583,8 @@ body {
   white-space: nowrap;
 }
 .mt-amount {
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 1.05rem; font-weight: 600;
   text-align: right; color: var(--accent);
 }
@@ -610,15 +613,16 @@ body {
 .pot-name { font-weight: 600; font-size: .9rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pot-actions { display: flex; gap: 4px; }
 .pot-amount {
-  font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 600;
+  font-family: 'DM Sans', sans-serif; font-variant-numeric: tabular-nums;
+  font-size: 1.5rem; font-weight: 600;
   color: var(--accent); margin-top: 10px;
 }
 .pot-amount span { font-family: 'DM Sans', sans-serif; font-size: .8rem; color: var(--ink-muted); font-weight: 400; }
-.pot-note { font-size: .74rem; color: var(--ink-muted); margin-top: 4px; }
+.pot-note { font-size: .78rem; color: var(--ink-muted); margin-top: 4px; }
 .pot-split {
-  display: flex; gap: 10px; flex-wrap: wrap;
+  display: flex; gap: 10px 16px; flex-wrap: wrap;
   margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-lt);
-  font-size: .72rem; color: var(--ink-muted);
+  font-size: .8rem; color: var(--ink); line-height: 1.45;
 }
 .bills-card { margin-bottom: 20px; }
 .settle-line {
@@ -626,13 +630,13 @@ body {
   border-top: 1px solid var(--border);
   font-size: .9rem; color: var(--ink);
 }
-.settle-line strong { font-family: 'Playfair Display', serif; color: var(--accent); }
+.settle-line strong { font-family: 'DM Sans', sans-serif; font-variant-numeric: tabular-nums; color: var(--accent); }
 .pots-total {
   margin-top: 22px; padding: 16px; border-radius: 12px;
   background: var(--surface); border: 1px solid var(--border);
 }
 .pots-total-row { display: flex; justify-content: space-between; align-items: baseline; }
-.pots-total-row strong { font-family: 'Playfair Display', serif; font-size: 1.35rem; color: var(--accent); }
+.pots-total-row strong { font-family: 'DM Sans', sans-serif; font-variant-numeric: tabular-nums; font-size: 1.35rem; font-weight: 600; color: var(--accent); }
 
 /* ══════════════════════════════════════════════════════════
    MODAL
@@ -923,7 +927,7 @@ body {
     border-radius: 8px; padding: 10px 12px;
   }
   .mob-sum-card .ms-lbl { font-size: .6rem; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.4); margin-bottom: 2px; }
-  .mob-sum-card .ms-val { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 600; color: #fff; }
+  .mob-sum-card .ms-val { font-family: 'DM Sans', sans-serif; font-variant-numeric: tabular-nums; font-size: 1.1rem; font-weight: 600; color: #fff; }
 
   /* mobile tab bar */
   .mobile-tabs {
