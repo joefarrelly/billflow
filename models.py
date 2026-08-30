@@ -44,6 +44,10 @@ class Subscription(db.Model):
     # Who the expense belongs to: "a" / "b" (the two people named in user
     # settings) or "shared". Drives the list filter and the pot split.
     payer = db.Column(db.String(20), nullable=False, server_default="shared")
+    # Which person's bank account the payment actually leaves from: "a" / "b",
+    # or NULL when unset. Independent of `payer` (a shared bill still comes out
+    # of one real account). Drives the monthly-bills settlement in the pots view.
+    paid_from = db.Column(db.String(1), nullable=True)
 
     def to_dict(self):
         return {
@@ -58,6 +62,7 @@ class Subscription(db.Model):
             "icon": self.icon,
             "anchorDate": self.anchor_date.isoformat() if self.anchor_date else None,
             "payer": self.payer,
+            "paidFrom": self.paid_from,
         }
 
 
