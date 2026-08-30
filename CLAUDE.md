@@ -94,7 +94,8 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
   "color": "#2E5FA3",
   "icon": null,
   "anchorDate": null,
-  "payer": "shared"
+  "payer": "shared",
+  "paidFrom": "a"
 }
 ```
 
@@ -102,12 +103,13 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 `startMonth`: 0–11 (January–December) — used as first billing month for quarterly/annual  
 `icon`: `null` or a Google favicon URL (`https://www.google.com/s2/favicons?domain=...&sz=64`)  
 `anchorDate`: `null` except for `fortnightly` — ISO date the 14-day cycle counts from  
-`payer`: `a` | `b` | `shared` — the two people are named in user settings (`personA`/`personB`)
+`payer`: `a` | `b` | `shared` — who the cost belongs to; the two people are named in user settings (`personA`/`personB`)  
+`paidFrom`: `a` | `b` | `null` — which person's bank account the payment actually leaves from, independent of `payer`; drives the monthly-bills settlement in the pots view
 
 ## Data model
 
 `User` columns: `id`, `email`, `created_at`, `settings` (JSON: theme, currency, calDisplay, categories, `personA`, `personB`, `incomeA`, `incomeB`)  
-`Subscription` columns: `id`, `user_id` (FK), `name`, `amount`, `frequency`, `day`, `start_month`, `category`, `color`, `icon`, `anchor_date`, `payer`  
+`Subscription` columns: `id`, `user_id` (FK), `name`, `amount`, `frequency`, `day`, `start_month`, `category`, `color`, `icon`, `anchor_date`, `payer`, `paid_from`  
 `Pot` columns: `id`, `user_id` (FK), `name`, `monthly_amount`, `color`, `note`, `created_at` — user-named monthly set-aside targets; no balance tracking. The "annual expenses" pot shown in the UI is computed from quarterly/annual subs, not stored.
 
 ## Frontend behaviour
@@ -116,6 +118,7 @@ All subscription routes require authentication (Google SSO). Returns `401` if no
 - List view is searchable/filterable by category; shows days-until for monthly subs
 - Yearly view shows bar chart + monthly breakdown table
 - Pots view shows the computed "annual expenses" pot plus user-created pots, each split between the two people by income ratio (50/50 if incomes unset), with a monthly total
+- Pots view also shows a "Monthly bills" card: total of monthly + fortnightly bills, each person's fair share (income-ratio for `shared`, full amount for personal), what leaves each person's account (`paidFrom`), and the monthly transfer that settles the difference. Bills with no `paidFrom` are excluded and counted in a note.
 - Sidebar summary shows "Monthly Bills" (monthly + fortnightly) and "Set Aside / mo" (annual-expenses pot + user pots)
 - Modal auto-fetches logo via Google favicon API with 400ms debounce — falls back to colour initials. × button dismisses the auto-fetched logo for the session.
 - All native `<select>` elements are replaced by a custom JS dropdown (`CustomSelect` class) for consistent cross-browser styling. Sidebar selects get a dark variant automatically.
