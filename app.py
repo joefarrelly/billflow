@@ -145,6 +145,11 @@ def _parse_anchor_date(value):
     return date.fromisoformat(value)
 
 
+def _clean_paid_from(value):
+    """Normalise the ``paidFrom`` field to ``"a"``, ``"b"``, or None."""
+    return value if value in ("a", "b") else None
+
+
 @app.route("/api/subscriptions", methods=["POST"])
 def create_sub():
     if not current_user.is_authenticated:
@@ -168,6 +173,7 @@ def create_sub():
         icon=data.get("icon"),
         anchor_date=anchor,
         payer=data.get("payer", "shared"),
+        paid_from=_clean_paid_from(data.get("paidFrom")),
     )
     db.session.add(sub)
     db.session.commit()
@@ -195,6 +201,8 @@ def update_sub(sub_id):
         sub.icon = data["icon"]
     if "payer" in data:
         sub.payer = data["payer"]
+    if "paidFrom" in data:
+        sub.paid_from = _clean_paid_from(data["paidFrom"])
     if "anchorDate" in data:
         sub.anchor_date = _parse_anchor_date(data["anchorDate"])
     if sub.frequency == "fortnightly" and sub.anchor_date:
@@ -321,6 +329,7 @@ def seed_demo_user():
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=netflix.com&sz=64",
                     payer="a",
+                    paid_from="a",
                 ),
                 Subscription(
                     user_id=user.id,
@@ -333,6 +342,7 @@ def seed_demo_user():
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=spotify.com&sz=64",
                     payer="b",
+                    paid_from="b",
                 ),
                 Subscription(
                     user_id=user.id,
@@ -344,6 +354,7 @@ def seed_demo_user():
                     category="other",
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=icloud.com&sz=64",
+                    paid_from="a",
                 ),
                 Subscription(
                     user_id=user.id,
@@ -355,6 +366,7 @@ def seed_demo_user():
                     category="utilities",
                     color="#C4623A",
                     icon=None,
+                    paid_from="b",
                 ),
                 Subscription(
                     user_id=user.id,
@@ -367,6 +379,7 @@ def seed_demo_user():
                     color="#C4623A",
                     icon="https://www.google.com/s2/favicons?domain=amazon.co.uk&sz=64",
                     payer="a",
+                    paid_from="a",
                 ),
                 Subscription(
                     user_id=user.id,
@@ -379,6 +392,7 @@ def seed_demo_user():
                     color="#3A7A58",
                     icon=None,
                     anchor_date=date(2026, 1, 6),
+                    paid_from="a",
                 ),
             ]
             db.session.add_all(demo_subs)
@@ -400,6 +414,19 @@ def seed_demo_user():
                     ),
                 ]
             )
+            db.session.commit()
+            return
+
+        # Demo user already exists: backfill paid_from on its shared bills so
+        # the pots-view settlement demonstrates a real transfer rather than
+        # showing every shared bill as unassigned.
+        demo_accounts = {"iCloud": "a", "Council Tax": "b", "Cleaner": "a"}
+        changed = False
+        for sub in Subscription.query.filter_by(user_id=user.id):
+            if sub.paid_from is None and sub.name in demo_accounts:
+                sub.paid_from = demo_accounts[sub.name]
+                changed = True
+        if changed:
             db.session.commit()
 
 
